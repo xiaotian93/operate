@@ -1,0 +1,656 @@
+import React, { Component } from 'react';
+import { Modal , Button , Icon , Upload , message , Spin } from 'antd';
+import moment from 'moment'
+import { browserHistory } from 'react-router';
+
+// import Filter from './filter';
+import axios from '../../../ajax/request'
+import { hs_match_list , hs_match_total , hs_match_fail , hs_match_success , match_success_approve , import_excel} from '../../../ajax/api';
+import { page , host } from '../../../ajax/config';
+import { format_table_data ,bmd} from '../../../ajax/tool';
+import ComponentRoute from '../../../templates/ComponentRoute';
+import List from '../../templates/list';
+import ListBtn from '../../templates/listBtn';
+class check_hs extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {
+            selectedRowKeys: [],
+            selectedRows: [],
+            loading: false,
+            loading_export:false,
+            total:1,
+            current:1,
+            pageSize:page.size,
+            data:[],
+            model:{
+                visible:false,
+                loading:false,
+                title:'确认通过？',
+                text:'',
+                approved:true,
+                id:0
+            },
+            postil:{
+                show:"none",
+                text:"",
+                left:10,
+                top:10
+            },
+            companys:[],
+            upload:{
+                show:false,
+                companyId:2
+            },
+            filter:{
+                start_time:moment().subtract(1,"days").format("YYYY-MM-DD")+ " 00:00:00",
+                end_time:moment().format("YYYY-MM-DD")+" 23:59:59"
+            },
+            match_success_loading:false,
+            list_page:1
+        };
+    }
+    componentWillMount(){
+        this.columns = [
+            {
+                title: '序号',
+                width: 50,
+                dataIndex: 'key',
+                render:(text,record,index)=>{
+                    if(text==="合计"){
+                        return text;
+                    }
+                    return `${index+1}`
+                }
+            },
+            {
+                title: '时间',
+                // width:200,
+                dataIndex: 'showTime',
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"orderTime",true)
+                }
+            },
+            {
+                title: 'uniqId',
+                // width:250,
+                dataIndex: 'showVo.uniqId'
+            },
+            {
+                title: '签单日',
+                // width:150,
+                render:(data) => (this.set_postil(data,data.showVo.policy_info.signDate,'signDate'))
+            },
+            {
+                title: '保险公司',
+                // width:100,
+                dataIndex: 'showVo.policy_info.company',
+            },
+            {
+                title: '保单号',
+                // width:200,
+                dataIndex: 'insurNo'
+            },
+            {
+                title: 'vin码',
+                // width:200,
+                render:(data) => (this.set_postil(data,data.showVo.car_info.vin_code,'vin_code'))
+            },
+            {
+                title: '投保人',
+                // width:300,
+                dataIndex: 'showVo.policy_info.policyPerson',
+            },
+            {
+                title: '商业险金额',
+                render:(data) => (this.set_postil(data,data.showVo.policy_info.fee.commInsurance,'commInsurance'))
+            },
+            {
+                title: '交强险金额',
+                render:(data) => (this.set_postil(data,data.showVo.policy_info.fee.trafficInsurance,'trafficInsurance'))
+            },
+            {
+                title: '车船税金额',
+                render:(data) => (this.set_postil(data,data.showVo.policy_info.fee.travelTax,'travelTax'))
+            },
+            {
+                title: '线上数据',
+                dataIndex: 'onlineCondition',
+            },
+            {
+                title: '线下数据',
+                dataIndex: 'excelCondition',
+            },
+            {
+                title: '匹配状态',
+                dataIndex: 'showVo.matchMsgDetail',
+            },
+            {
+                title: '审核状态',
+                dataIndex: 'statusStr',
+            },
+            {
+                title: '操作',
+                // width:250,
+                // fixed: 'right',
+                render: (data) => {
+                    if(data.key==='总计'){
+                        return '';
+                    }
+                    let ops=[];
+                    ops=[<Button type="primary" size="small" onClick={()=>(this.approved(data.matchDataId,true))}>进审</Button>,
+                    <Button type="danger" size="small" onClick={()=>(this.approved(data.matchDataId,false))}>驳回</Button>,
+                    <Button size="small" onClick={()=>(this.detail(data.id))}>查看</Button>]
+                    if(data.status!==0){
+                        ops=[<Button size="small" onClick={()=>(this.detail(data.id))}>查看</Button>]
+                    }
+                    return <ListBtn btn={ops} />;
+                    // let ops = (<span>
+                    //         <Button type="primary" size="small" onClick={()=>(this.approved(data.matchDataId,true))}>进审</Button>&emsp;
+                    //         <Button type="danger" size="small" onClick={()=>(this.approved(data.matchDataId,false))}>驳回</Button>&emsp;
+                    //         <Button size="small" onClick={()=>(this.detail(data.id))}>查看</Button>
+                    //     </span>);
+                    // if(data.status!==0){
+                    //     ops = (<span>
+                    //             <Button size="small" onClick={()=>(this.detail(data.id))}>查看</Button>
+                    //         </span>)
+                    // }
+                    // return ops
+                }
+            }
+        ];
+        this.filter = {
+            time:{
+                name:"时间",
+                type:"range_date",
+                feild_s:"start_time",
+                feild_e:"end_time",
+                // values:[moment().subtract(1,"days"),moment()],
+                placeHolder:['开始日期',"结束日期"]
+            },
+            insur_id:{
+                name:"保险公司",
+                placeHolder:"全部",
+                type:"select",
+                values:JSON.parse(localStorage.getItem("select")).companys_number
+            },
+            online_condition:{
+                name:"线上数据",
+                placeHolder:"全部",
+                type:"select",
+                values:[{
+                    name:"全部",
+                    val:""
+                },{
+                    name:"存在",
+                    val:"存在"
+                },{
+                    name:"不存在",
+                    val:"不存在"
+                }]
+            },
+            excel_condition:{
+                name:"线下数据",
+                placeHolder:"全部",
+                type:"select",
+                values:[{
+                    name:"全部",
+                    val:""
+                },{
+                    name:"存在",
+                    val:"存在"
+                },{
+                    name:"不存在",
+                    val:"不存在"
+                }]
+            },
+            insur_no:{
+                name:"保单号",
+                type:"text",
+                placeHolder:"请输入保单号"
+            },
+            vin_code:{
+                name:"vin码",
+                type:"text",
+                placeHolder:"请输入vin码"
+            },
+            match_msg_detail:{
+                name:"匹配状态",
+                type:"select",
+                placeHolder:"全部",
+                values:[{
+                    name:"全部",
+                    val:""
+                },{
+                    name:"未匹配",
+                    val:"未匹配"
+                },{
+                    name:"匹配成功",
+                    val:"匹配成功"
+                },{
+                    name:"vin码匹配失败",
+                    val:"vin码匹配失败"
+                },{
+                    name:"金额匹配失败",
+                    val:"金额匹配失败"
+                },{
+                    name:"借贷日期匹配失败",
+                    val:"借贷日期匹配失败"
+                },{
+                    name:"收款信息匹配失败",
+                    val:"收款信息匹配失败"
+                }]
+            },
+            audit_status:{
+                name:"审核状态",
+                placeHolder:"全部",
+                type:"select",
+                op:"like",
+                values:[{
+                    name:"全部",
+                    val:""
+                },{
+                    name:"未进审",
+                    val:0
+                },{
+                    name:"等待关联单",
+                    val:1
+                },{
+                    name:"审核中",
+                    val:2
+                },{
+                    name:"已通过",
+                    val:3
+                },{
+                    name:"已驳回",
+                    val:-2
+                }]
+            }
+        }
+        
+    }
+    componentDidMount(){
+        this.get_select();
+        var select=window.localStorage.getItem(this.props.location.pathname);
+        if(select){
+            this.get_list(1,JSON.parse(select).remberData);
+        }else{
+            this.get_list(1,this.state.filter);
+        }
+    }
+    set_postil(data,val,feild){
+        let faild_list = data.matchDetailList;
+        let className = '';
+        let text = [];
+        for(let f in faild_list){
+            let faild = faild_list[f];
+            if(faild.status!==-1){
+                continue;
+            }
+            if(faild.matchKey===feild){
+                className = 'corner';
+                text.push(<div key="f">原因：{ faild.matchResult } </div>);
+                text.push(<div key="e">线下值：{ faild.matchValueInExcel } </div>);
+                text.push(<div key="c">线上值： { faild.matchValueInOnline } </div>);
+            }
+        }
+        return {
+            children:val,
+            props:{
+                className:className,
+                onMouseOver:(e) => {this.mouse_enter(e,data,text)},
+                onMouseOut:(e) => {this.mouse_out(e,data,text)}
+            }
+        }
+    }
+    get_list(page_no,filter=[]){
+        let rqd = JSON.parse(JSON.stringify(filter));
+        rqd.page = page_no||1;
+        rqd.size = page.size;
+        this.setState({
+            loading:true,
+            selectedRowKeys:[]
+        })
+        axios.post(hs_match_list,rqd).then((data)=>{
+            let list = this.extract_data(data);
+            if(data.msg){
+                message.info(data.msg,3);
+            }
+            this.get_total(rqd);
+            this.setState({
+                data:format_table_data(list,page_no,page.size),
+                total:data.total,
+                current:data.current,
+                loading:false
+            })
+        });
+        
+    }
+    get_total(param){
+        axios.post(hs_match_total,param).then((data)=>{
+            if(this.state.data.length<=0){
+                this.setState({
+                    data:[]
+                })
+                return
+            }
+            let total_data = JSON.parse(JSON.stringify(this.state.data[0]));
+            total_data.key = "总计";
+            total_data.matchDetailList = [];
+            total_data.showVo.policy_info.fee.commInsurance = data.data.comm_insurance;
+            total_data.showVo.policy_info.fee.travelTax = data.data.travel_tax;
+            total_data.showVo.policy_info.fee.trafficInsurance = data.data.traffic_insurance;
+            total_data.orderId = "";
+            total_data.showVo.signTime = "";
+            total_data.showVo.policy_info.signDate = "";
+            total_data.showVo.uniqId = "";
+            total_data.showVo.policy_info.company = "";
+            total_data.showVo.car_info.vin_code = "";
+            total_data.insurNo = "";
+            total_data.showVo.policy_info.policyPerson = "";
+            total_data.onlineCondition = "";
+            total_data.excelCondition = "";
+            total_data.statusStr = "";
+            total_data.showTime = "";
+            total_data.showVo.matchMsgDetail = "";
+            let list = this.state.data;
+            list.push(total_data);
+            this.setState({
+                data:list
+            })
+        });
+    }
+    match_success(){
+        this.setState({
+            match_success_loading:true
+        })
+        axios.post(match_success_approve,null).then((res)=>{
+            message.info(res.msg);
+            this.setState({
+                match_success_loading:false
+            })
+        })
+    }
+    get_select(){
+        let select_data = JSON.parse(localStorage.getItem("select"));
+        this.setState({
+            companys:select_data.companys_require
+        })
+    }
+    extract_data(data){
+        let list = data.data;
+        let res = [];
+        for(let l in list){
+            let item = JSON.parse(list[l].data);
+            item.id = list[l].id;
+            item.excelId = list[l].excelId;
+            item.onlineId = list[l].onlineId;
+            item.showTime = list[l].showTime;
+            item.statusStr = list[l].statusStr;
+            item.status = list[l].status;
+            item.matchDataId = list[l].matchDataId;
+            //console.log("id："+item.id,"taskId："+item.taskId)
+            res.push(item);
+        }
+        return res;
+    }
+    get_filter(data){
+        this.get_list(1,data);
+        this.setState({
+            filter:data
+        })
+    }
+    detail(id){
+        window.open('/db/match/hs/detail?id='+id);
+    }
+    approved(id,pass){
+        this.setState({
+            model:{
+                approved:pass,
+                visible:true,
+                title:'操作确认',
+                text:(pass?"确认进审该订单吗？":"确认驳回该订单吗？"),
+                id:[id]
+            }
+        })
+    }
+    mouse_enter(event,data,text){
+        let td = event.target;
+        if(td.className.indexOf("corner")<0){
+            return;
+        }
+        let scroll_ele = td.parentElement.parentElement.parentElement.parentElement;
+        this.setState({
+            postil:{
+                show:"inline-block",
+                text:text,
+                left:td.offsetLeft+td.clientWidth+25-scroll_ele.scrollLeft,
+                td:td.offsetTop - scroll_ele.scrollTop + td.clientHeight
+            }
+        })
+    }
+    mouse_out(event){
+        let td = event.target;
+        if(td.className.indexOf("corner")<0){
+            return;
+        }
+        this.setState({
+            postil:{
+                show:"none",
+                text:"",
+                left:10,
+                top:10
+            }
+        })
+    }
+    handleOk(){
+        this.approve_post(this.state.model.id,this.state.model.approved);
+        this.handleCancel();
+    }
+    batch_operation(pass){
+        let rows = this.state.selectedRows;
+        let ids = [];
+        if(rows.length<=0){
+            message.warn("请选择订单");
+            return;
+        }
+        for(let r in rows){
+            ids.push(rows[r].matchDataId);
+        }
+        this.setState({
+            model:{
+                approved:pass,
+                visible:true,
+                title:this.state.model.title,
+                text:(pass?"确认进审该订单吗？":"确认驳回该订单吗？"),
+                id:ids
+            }
+        })
+    }
+    approve_post(ids,approved){
+        let url = '/';
+        if(approved){
+            url = hs_match_success
+        }else{
+            url = hs_match_fail
+        }
+        let rqd = {
+            match_data_id:JSON.stringify(ids)
+        }
+        axios.post(url,rqd).then((res)=>{
+            Modal.success({
+                title: '',
+                content: res.msg,
+                okText:'确定'
+            });
+            this.get_list(this.state.list_page,this.state.filter);
+        });
+    }
+    handleCancel(){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                text:this.state.model.text,
+                id:this.state.model.id,
+                title:this.state.model.title,
+                visible:false
+            }
+        })
+    }
+
+    page_up(page,pageSize){
+        window.scrollTo(0,0);
+        this.setState({
+            list_page:page
+        })
+        this.get_list(page,this.state.filter);
+    }
+    show_import(){
+        this.setState({
+            upload:{
+                show:!this.state.upload.show
+            }
+        });
+    }
+    beforeUpload(){
+        this.setState({
+            loading_export:true
+        })
+    }
+    get_upload_companyId(id){
+        this.setState({
+            upload:{
+                companyId:id
+            }
+        })
+    }
+    upload_back(data){
+        this.setState({
+            loading_expor:false
+        })
+        if(data.file.status!=='done'){
+            return;
+        }
+        if(data.file.response.status===0){
+            localStorage.setItem("insurance_excel_import",JSON.stringify(data.file.response.data));
+            // window.location.href = '/db/check/hs/excel';
+            browserHistory.push('/db/match/hs/excel');
+        }else{
+            message.error(data.file.response.msg)
+        }
+    }
+    render (){
+        const { selectedRowKeys } = this.state;
+        let pagination = {
+            // total : this.state.total+Math.ceil(this.state.total/this.state.pageSize),
+            total:this.state.total,
+            current : this.state.current,
+            pageSize : this.state.pageSize+1,
+            onChange : this.page_up.bind(this),
+            showTotal:total=>`共${total}条数据`
+        }
+        const rowSelection = {
+            selectedRowKeys,
+            onChange: (selectedRowKeys, selectedRows) => {
+                console.log(selectedRowKeys,selectedRows);
+                this.setState({ selectedRowKeys , selectedRows });
+            },
+            getCheckboxProps: record => ({
+                disabled: (record.key === '总计'||record.status!==0),
+                name: record.key
+            }),
+        };
+        const upload_props = {
+            action:host + import_excel,
+            data:{
+                company:this.state.upload.companyId
+            },
+            beforeUpload:this.beforeUpload.bind(this),
+            showUploadList:false,
+            withCredentials:true,
+            onChange:this.upload_back.bind(this),
+            name:'file'
+        }
+        const table_props = {
+            // scroll:{x: 2500},
+            rowSelection:rowSelection,
+            columns:this.columns ,
+            dataSource:this.state.data,
+            pagination : pagination,
+            loading:this.state.loading,
+            footer:()=>this.state.data.length>0?"此合计是当前查询结果的合计":""
+        }
+        const footer = [
+            <Button key="back" onClick={this.handleCancel.bind(this)}>取消</Button>,
+            <Button key="submit" type="primary" loading={this.state.loading_model} onClick={this.handleOk.bind(this)}>确认</Button>
+        ]
+        const model_props = {
+            visible : this.state.model.visible, 
+            confirmLoading:false,
+            title : this.state.model.title,
+            onOk : this.handleOk.bind(this), 
+            onCancel : this.handleCancel.bind(this),
+            footer : footer,
+        }
+
+        let upload_items = [];
+        for(let c in this.state.companys){
+            upload_items.push(
+                <div key={c} className="uploadButton" onClick={()=>{this.get_upload_companyId(this.state.companys[c].val)}}><Icon type="folder-add" />&emsp;{this.state.companys[c].name}</div>
+            )
+        }
+        const table={
+            filter:{
+                "data-get":this.get_filter.bind(this),
+                "data-source":this.filter,
+                companys:this.state.companys,
+                time:[moment().subtract(1,"days"),moment()],
+                "data-paths":this.props.location.pathname,
+            },
+            tableInfo:table_props,
+            tableTitle:{
+                left:<span>
+                    金额单位：元
+                </span>,
+                right:<span>
+                    <Button type="primary" onClick={(e)=>(this.batch_operation(true))}>批量进审</Button>&emsp;
+                    <Button type="success" loading={this.state.match_success_loading} onClick={this.match_success.bind(this)}>匹配成功进审</Button>&emsp;
+                    <Button type="primary" onClick={this.show_import.bind(this)}>导入</Button>
+                </span>
+            }
+        }
+        return(
+            <div className="Component-body">
+                <Spin spinning={this.state.loading_export}>
+                {/* <Filter data-get={this.get_filter.bind(this)} data-source={this.filter} companys={this.state.companys} />
+                <Row style={{padding:"20px"}}>
+                <Row style={{background:"#fff"}}>
+                <Row style={{padding:"15px 22px 0 22px"}}>
+                    <Col span={24} className="text-right">
+                        <Button type="primary" onClick={(e)=>(this.batch_operation(true))}>批量进审</Button>&emsp;
+                        <Button type="success" loading={this.state.match_success_loading} onClick={this.match_success.bind(this)}>匹配成功进审</Button>&emsp;
+                        <Button type="primary" onClick={this.show_import.bind(this)}>&emsp;导入&emsp;</Button>&emsp;
+                    </Col>
+                </Row>
+                <Row className="content">
+                    <Table {...table_props} bordered />
+                    <div className="postil" style={{display:this.state.postil.show,left:this.state.postil.left+'px',top:this.state.postil.top+'px'}}>{this.state.postil.text}</div>
+                </Row>
+                </Row>
+                </Row> */}
+                <List {...table} /> 
+                </Spin>
+                <Modal {...model_props}>
+                    <h3>{this.state.model.text}</h3>  
+                </Modal>
+                <Modal visible={this.state.upload.show} title={'导入excel'} onCancel={this.show_import.bind(this)} width={200} footer={null}>
+                    <Upload {...upload_props} className="upload_content">
+                        {upload_items}
+                    </Upload>
+                </Modal>
+            </div>
+        )
+    }
+}
+
+export default ComponentRoute(check_hs);

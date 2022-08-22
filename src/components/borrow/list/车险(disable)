@@ -1,0 +1,268 @@
+import React, { Component } from 'react';
+// import { Button, Select } from 'antd';
+// import moment from 'moment'
+// import Filter from '../../ui/Filter_obj8';
+import { axios_sh } from '../../../ajax/request'
+import { cxfq_loan_list , cxfq_product_list } from '../../../ajax/api';
+import { page } from '../../../ajax/config';
+import { order_status_map , order_status_select } from '../../../ajax/config_sh';
+import { format_table_data , format_time ,bmd} from '../../../ajax/tool';
+import ComponentRoute from '../../../templates/ComponentRoute';
+import List from '../../templates/list';
+import Permissions from '../../../templates/Permissions';
+class Borrow extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {
+            selectedRowKeys: [],
+            selectedRows: [],
+            loading: false,
+            total:1,
+            current:1,
+            pageSize:page.size,
+            data:[],
+            filter:{},
+            total_money:0,
+        };
+    }
+    componentWillMount(){
+        this.columns = [
+            {
+                title: '序号',
+                width:50,
+                dataIndex: 'key',
+                render:(text,record,index)=>{
+                    if(text==="合计"){
+                        return text;
+                    }
+                    return `${index+1}`
+                }
+            },
+            {
+                title: '订单编号',
+                dataIndex: 'orderNo',
+                render:(e)=>{
+                    return e
+                }
+            },
+            {
+                title: '订单时间',
+                dataIndex: 'createTime',
+                render:data=>{
+                    return format_time(data)||"--"
+                },
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"createTime")
+                }
+            },
+            {
+                title: '借款方',
+                dataIndex: 'borrower'
+            },
+            {
+                title: '借款金额',
+                // width:90,
+                dataIndex: 'loanMoney',
+                render:data=>{
+                    return data.money()
+                },
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"loanMoney")
+                }
+            },
+            // {
+            //     title: '借款期限(月)',
+            //     //width:70,
+            //     dataIndex: 'periods'
+            // },
+            {
+                title: '产品名称',
+                //width:80,
+                dataIndex: 'productName'
+            },
+            {
+                title:'商户名称',
+                dataIndex:'businessName'
+            },
+            {
+                title: '订单状态',
+                //width:100,
+                render:(data)=>(data.key==="合计"?null:(order_status_map[data.status]||"未知状态"))
+            },
+            {
+                title: '操作',
+                // width:100,
+                render: (data) => (
+                    data.key==="合计"?null:<Permissions size="small" server={global.AUTHSERVER.cxfq.key} tag="button" permissions={global.AUTHSERVER.cxfq.access.loan_detail} onClick={()=>(this.detail(data.orderNo))} src={'/jk/list/cxfq/detail?orderNo='+data.orderNo+"&type=jk"}>查看</Permissions>
+                )
+            }
+        ];
+        let borrow_filter = order_status_select;
+        borrow_filter.unshift({
+            name:"全部",val:""
+        })
+        this.filter = {
+            time:{
+                name:"订单时间",
+                type:"range_date",
+                feild_s:"startTime",
+                feild_e:"endTime",
+                placeHolder:['开始日期',"结束日期"]
+            },
+            orderNo :{
+                name:"订单号",
+                type:"text",
+                placeHolder:"请输入订单编号"
+            },
+            borrower :{
+                name:"借款方",
+                type:"text",
+                placeHolder:"请输入借款方"
+            },
+            // carNo:{
+            //     name:"车牌号",
+            //     type:"text",
+            //     placeHolder:"请输入车牌号/发动机号"
+            // },
+            // insuranceNo :{
+            //     name:"保单号",
+            //     type:"text",
+            //     placeHolder:"请输入保单号"
+            // },
+            // customerType :{
+            //     name:"业务类型",
+            //     type:"select",
+            //     placeHolder:"请选择",
+            //     values:[{name:"企业",val:1},{name:"个人",val:0}]
+            // },
+            productId:{
+                name:"产品名称",
+                type:"select",
+                placeHolder:"全部",
+                values:"productIds"
+            },
+            businessName :{
+                name:"商户名称",
+                type:"text",
+                placeHolder:"请输入商户名称"
+            },
+            status:{
+                name:"状态",
+                type:"select",
+                placeHolder:"全部",
+                values:borrow_filter
+            }
+        }
+    }
+
+    componentDidMount(){
+        var select=window.localStorage.getItem(this.props.location.pathname);
+        console.log(select)
+        if(select){
+            this.get_list(1,JSON.parse(select).remberData);
+        }else{
+            this.get_list();
+        }
+        this.get_select();
+    }
+    get_list(page_no , filter={}){
+        let data = JSON.parse(JSON.stringify(filter));
+        data.page = page_no||1;
+        data.page_size = page.size;
+        this.setState({
+            loading:true,
+            selectedRowKeys:[]
+        })
+        axios_sh.post(cxfq_loan_list,data).then((data)=>{
+            let list = data.data;
+            var total={
+                key:"合计",
+                loanMoney:data.sumLoanMoney
+            };
+            list.push(total);
+            this.setState({
+                data:format_table_data(list,page_no,page.size),
+                loading:false,
+                total:data.totalData,
+                current:data.current,
+                total_money:data.extra?data.extra.money():"0"
+            })
+            
+        });
+    }
+    get_filter(data){
+        this.setState({
+            filter:data
+        })
+        this.get_list(1,data);
+    }
+    get_select(){
+        axios_sh.get(cxfq_product_list).then(data=>{
+            this.setState({
+                productIds:this.filter_value(data.data)
+            })
+        });
+    }
+    filter_value(arr){
+        let res = [];
+        res.push({val:"",name:"全部"})
+        for(let a in arr){
+            res.push({val:arr[a].id,name:arr[a].name})
+        }
+        return res;
+    }
+    detail(id){
+        window.open('/jk/list/cxfq/detail?orderNo='+id+"&type=jk");
+    }
+    page_up(page,pageSize){
+        window.scrollTo(0,0);
+        this.get_list(page,this.state.filter);
+    }
+    render (){
+        var page=parseInt(this.state.total/(this.state.pageSize + 1),10);
+        let pagination = {
+            total : this.state.total+page,
+            current : this.state.current,
+            pageSize : this.state.pageSize+1,
+            onChange : this.page_up.bind(this),
+            showTotal:total=>`共${this.state.total}条数据`
+        }
+        
+        const table_props = {
+            columns:this.columns ,
+            dataSource:this.state.data,
+            pagination : pagination,
+            loading:this.state.loading,
+            footer:()=>this.state.data.length>0?"此合计是当前查询结果的合计":""
+        }
+        const table={
+            filter:{
+                "data-get":this.get_filter.bind(this),
+                "data-source":this.filter,
+                productIds:this.state.productIds,
+                "data-paths":this.props.location.pathname
+            },
+            tableInfo:table_props,
+            tableTitle:{
+                left:<span>
+                    金额单位：元 
+                </span>,
+                right:null
+            },
+        }
+        
+        return(
+            <List {...table} />
+            // <div className="Component-body">
+            //     <Filter data-get={this.get_filter.bind(this)} data-source={this.filter} productIds={this.state.productIds} />
+            //     <Row className="table-content">
+            //         <div className="text-orange">当前查询结果 借款金额合计：<span className="total-bold">{this.state.total_money}</span>元</div>
+            //         <Table {...table_props} bordered />
+            //     </Row>
+                
+            // </div>
+        )
+    }
+}
+
+export default ComponentRoute(Borrow);

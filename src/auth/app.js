@@ -1,0 +1,6 @@
+class AuthApp{
+    ready(){
+        
+    }
+}
+

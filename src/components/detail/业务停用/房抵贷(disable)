@@ -1,0 +1,441 @@
+import React, { Component } from 'react';
+import { Row , Col , Tag} from 'antd';
+import moment from 'moment';
+
+import Card from "./Gallery";
+import Table from "./table-col";
+import Audit from "./auditingView_fdd";
+import TimeLine from "./timeLine_fdd";
+
+import {axios_fdd} from "../../ajax/request";
+import {fdd_get_detail} from "../../ajax/api";
+
+
+class LineTable extends Component {
+    constructor (props){
+        super(props);
+        // 识别参数来源   地址栏or属性
+        let audit = false , orderNo , schedule;
+        if(props.location){
+            audit = props.location.query.audit==="false"?false:true;
+            orderNo = props.location.query.orderNo;
+            schedule = true;
+        }else{
+            orderNo = props.orderNo;
+            schedule = false;
+        }
+        this.state={
+            audit:audit,
+            orderNo:orderNo,
+            schedule:schedule,
+            detail:[{
+                borrowerName:"",
+                borrowerIdNo:"",
+                borrowerPhoneNo:"",
+                borrowerMarriageStatus:"",
+                amount:"",
+                bankCardNo:"",
+                bankDetail:"",
+                bankName:"",
+                borrowerCreditReportImageStorageList:[{url:""}],
+                borrowerHouseholdRegisterImageStorageList:[{url:""}],
+                borrowerIdentificationImageStorageList:[{url:""}],
+                borrowerMarriageImageStorageList:[{url:""}],
+                contractImageStorageList:[{url:""}],
+                insuranceImageStorageList:[{url:""}],
+                loanNotingImageStorageList:[{url:""}],
+                mortageImageStorageList:[{url:""}],
+                propertyImageStorageList:[{url:""}],
+                loanContractImageStorageList:[{url:""}],
+                mortageContractImageStorageList:[{url:""}],
+                mortageNotingImageStorageList:[{url:""}],
+                otherInfoImageStorageList:[{url:""}],
+                realEstateRegistrationImageStorageList:[{url:""}],
+                createTime:"",
+                loanStartDate:"",
+                loanEndDate:"",
+                insuranceNo:"",
+                orderNo:"",
+                period:"",
+                periodType:"",
+                propertyLocation:"",
+                propertyRegisteNo:"",
+                rate:"",
+                usage:"",
+                trains:[],
+                status:""
+            }
+            ],
+            jd:{
+                
+            },
+            jointSubjectDetailList:[]
+        }
+    }
+    componentWillMount (){
+        this.proposer_info={
+            borrowerName:{
+               name:"姓名",
+                width_val:"100px",
+                width_key:"100px"
+            },
+            borrowerIdNo:{
+                name:"证件号码"
+            },
+            borrowerPhoneNo:{
+                name:"联系手机号"
+            },
+            borrowerMarriageStatus:{
+                name:"婚姻状态",
+                width_val:"100px",
+                render:(e)=>{
+                    var data={1:"未婚",2:"已婚",3:"离异"};
+                    return data[e.borrowerMarriageStatus]
+                }
+            },
+            bankCardNo:{
+                name:"银行卡号",
+                span_val:3
+            },
+            bankName:{
+                name:"开户行名",
+                span_val:3
+            },
+            borrowerHouseholdRegisterImageStorageList:{
+                name:"户口簿影像",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.borrowerHouseholdRegisterImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            borrowerIdentificationImageStorageList:{
+                name:"证件影像",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.borrowerIdentificationImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            borrowerCreditReportImageStorageList:{
+                name:"征信报告",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.borrowerCreditReportImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            borrowerMarriageImageStorageList:{
+                name:"婚姻证明",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.borrowerMarriageImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            }
+        };
+        this.jointSubjectDetailList={
+            name:{
+                name:"姓名",
+                width_val:"100px",
+                width_key:"100px"
+            },
+            idNo:{
+                name:"证件号码"
+            },
+            phoneNo:{
+                name:"联系手机号"
+            },
+            marriageStatus:{
+                name:"婚姻状态",
+                width_val:"100px",
+                render:(e)=>{
+                    var data={1:"未婚",2:"已婚",3:"离异"};
+                    return data[e.marriageStatus]
+                }
+            },
+            householdRegisterImageStorageList:{
+                name:"户口簿影像",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.householdRegisterImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            identificationImageStorageList:{
+                name:"证件影像",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.identificationImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            creditReportImageStorageList:{
+                name:"征信报告",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.creditReportImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            },
+            marriageImageStorageList:{
+                name:"婚姻证明",
+                span_val:7,
+                className_val:"text-left",
+                render:(data)=>{
+                    return <Card card={data.marriageImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />;
+                }
+            }
+        };
+        this.house_info={
+            propertyRegisteNo:{
+                name:"房屋产权证号",
+                width_key:"150px"
+            },
+            propertyLocation:{
+                name:"房产地址"
+            },
+            trains:{
+                name:"房屋产权人",
+                span_val:3,
+                render:(data)=>{
+                    var tagArr=[];
+                    for(var i in data.trains){
+                        tagArr.push(<Tag key={i+"tag"}>{data.trains[i]}</Tag>);
+                    }
+                    return tagArr
+                }
+            },
+            propertyImageStorageList:{
+                name:"房屋产权证影像",
+                span_val:3,
+                classname:"text-align",
+                render:(e)=>{
+                    return <Card card={e.propertyImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+                }
+            }
+        };
+        this.jiedai={
+            amount:{
+                name:"借款金额（元）",
+                width_key:"150px",
+                width_val:"100px",
+                render:(e)=>{
+                    return (e.amount/100).toFixed(2)
+                }
+            },
+            rate:{
+                    name:"借款利率（%）",
+                width_val:"100px",
+                render:(e)=>{
+                    return (e.rate/1).toFixed(2)
+                }
+                },
+            period:{
+                    name:"借款期限（月）",
+                width_val:"100px"
+                },
+            insuranceNo:{
+                    name:"长安保单号"
+                },
+            loanStartDate:{
+                    name:"借贷日期",
+                    span_val:7,
+                    render:(data)=>{
+                        return <span> {moment(data.loanStartDate).format("YYYY-MM-DD")}&emsp;至&emsp;{moment(data.loanEndDate).format("YYYY-MM-DD")} </span>
+                    }
+                },
+            insuranceImageStorageList:{
+                    render:(e)=>{
+                        return <Card card={e.insuranceImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+
+                    },
+                    name:"长安保单",
+                    span_val:7,
+                    classname:"text-align"
+                },
+            mortageContractImageStorageList:{
+                    render:(e)=>{
+                        return <Card card={e.mortageContractImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+
+                    },
+                    name:"抵押合同",
+                    span_val:7,
+                    classname:"text-align"
+                },
+            loanContractImageStorageList:{
+                render:(e)=>{
+                    return <Card card={e.loanContractImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+
+                },
+                name:"借款合同",
+                span_val:7,
+                classname:"text-align"
+            }
+        };
+        this.jd={
+            loanNotingImageStorageList:{
+                render:(e)=>{
+                    return <Card card={e.loanNotingImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+                },
+                name:"借款合同强制公证",
+                span_val:7,
+                classname:"text-align",
+                width_key:"200px"
+            },
+            mortageNotingImageStorageList:{
+                render:(e)=>{
+                    return <Card card={e.mortageNotingImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+                },
+                name:"抵押合同强制公证",
+                span_val:7,
+                classname:"text-align",
+                width_key:"200px"
+            },
+            realEstateRegistrationImageStorageList:{
+                name:"不动产登记证明",
+                span_val:7,
+                classname:"text-align",
+                render:(e)=>{
+                    return <Card card={e.realEstateRegistrationImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+                }
+            },
+            otherInfoImageStorageList:{
+                render:(e)=>{
+                    return <Card id="test" card={e.otherInfoImageStorageList} width="56px" marginLeft="0 0 0 10px" lineHeight="20px" />
+                },
+                name:"其他资料",
+                span_val:7,
+                classname:"text-align",
+                width_key:"200px"
+            },
+        }
+
+        this.getDetail();
+    }
+    componentDidMount(){
+
+    }
+    downloadIamge (selector, name) {
+        // 通过选择器获取img元素
+        var img = document.querySelector(selector)
+        // 将图片的src属性作为URL地址
+        // var that=this;
+        var url = img.src;
+        var a = document.createElement('a')
+        var event = new MouseEvent('click')
+
+        a.download = name || '下载图片名称'
+        a.href = url
+
+        a.dispatchEvent(event)
+    }
+    getDetail (){
+        var id=this.state.orderNo;
+        var dataArr=[],trains=[];
+        axios_fdd.get(fdd_get_detail+"?orderNo="+id).then((data)=>{
+            if(data.result.code!==0){
+                alert(data.result.msg);
+                return;
+            }
+            var detail=data.result.data;
+            var jointSubjectDetailList=detail.jointSubjectDetailList;
+            var jointSubjectList=detail.jointSubjectList;
+            //房屋产权人
+            trains.push(detail.borrowerName);
+            for(var i in jointSubjectList){
+                //trains+=(jointSubjectList[i].name+" ");
+                trains.push(jointSubjectList[i].name)
+            }
+            //trains+=detail.borrowerName;
+            detail.trains=trains;
+            dataArr.push(detail);
+            this.setState({
+                detail:dataArr,
+                jointSubjectDetailList:jointSubjectDetailList
+            })
+        });
+    }
+
+    render (){
+        let status={0:"草稿",20:"初审",21:"复审",30:"待付款",31:"付款中",40:"付款完成",60:"已结清",61:"已驳回",62:"付款失败"};
+        let audit_dom = (
+                <Row>
+                    <Audit id={this.state.orderNo} status={this.state.detail[0].status} loanNotingImageStorageList={this.state.detail[0].loanNotingImageStorageList} mortageNotingImageStorageList={this.state.detail[0].mortageNotingImageStorageList} realEstateRegistrationImageStorageList={this.state.detail[0].realEstateRegistrationImageStorageList} />
+                </Row>
+            );
+        let jointSubjectDetailList=this.state.jointSubjectDetailList;
+        return (
+            <div>
+                <Row className="detail_title">
+                    <Col span={12} className="text-left">订单编号：<span>{this.state.detail[0].orderNo}</span></Col>
+                    <Col span={12} className="text-right">订单状态：<span>{status[this.state.detail[0].status]}</span></Col>
+                </Row>
+                { this.state.audit?audit_dom:"" }
+                <Row>
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">申请人信息</span>
+                    </div>
+                    <div className = "content query-sh">
+                        <Table data-source={this.state.detail[0]} data-columns={this.proposer_info} />
+                    </div>
+                </Row>
+                {
+                    jointSubjectDetailList.length>0?<Row>
+                        <div className="title">
+                            <div className="icon" />
+                            <span className="titleWord">房产共有人信息</span>
+                        </div>
+                        {
+                            jointSubjectDetailList.map(function(i,k) {
+                                return (
+                                    <div className = "content query-sh" key={k}>
+                                        <Table data-source={i} data-columns={this.jointSubjectDetailList} />
+                                    </div>
+                                )
+                            }.bind(this))
+                        }
+
+
+                    </Row>:""
+                }
+                <Row>
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">房产信息</span>
+                    </div>
+                    <div className ="content query-sh">
+                        <Table data-source={this.state.detail[0]} data-columns={this.house_info} data-row={4} />
+                    </div>
+
+                </Row>
+                <Row>
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">借贷信息</span>
+                    </div>
+                    <div className = "content query-sh">
+                        <Table data-source={this.state.detail[0]} data-columns={this.jiedai} />
+                    </div>
+
+                </Row>
+                <Row>
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">补充信息</span>
+                    </div>
+                    <div className = "content query-sh">
+                        <Table data-source={this.state.detail[0]} data-columns={this.jd} />
+                    </div>
+
+                </Row>
+                <Row>
+                    {this.state.schedule?<TimeLine pild={this.state.orderNo} />:""}
+                </Row>
+            </div>
+        )
+    }
+
+}
+export default LineTable;

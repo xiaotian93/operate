@@ -1,0 +1,69 @@
+variables:
+  NODE_VERSION: "v9.2.0"
+  OUTPUT_DIR: "static/"
+
+stages:
+  - before-build
+  - build 
+  - after-build
+  - upload
+
+before-build:
+  stage: before-build
+  script:
+    - \. "/opt/nvm/nvm.sh"
+    - nvm use $NODE_VERSION
+    - npm  install
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 day
+
+build:
+  stage: build
+  script:
+    - \. "/opt/nvm/nvm.sh"
+    - nvm use $NODE_VERSION
+    - CI=false npm run build
+  artifacts:
+    paths:
+      - $OUTPUT_DIR
+    expire_in: 1 day
+
+after-build:
+  stage: after-build
+  script:
+    - export COMMIT_JOB_NAME=$CI_PROJECT_NAME
+    - export COMMIT_USER=$GITLAB_USER_NAME
+    - export COMMIT_VERSION=V$CI_PIPELINE_ID
+    - export COMMIT_LOG=$(git log -1 --pretty=%B)
+    - export COMMIT_BRANCH=$CI_COMMIT_REF_NAME
+    - export PACKAGE_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+    - export COMMIT_ID=$CI_COMMIT_SHA
+    - mkdir -p static/static/op
+    - echo "{\"commit_user\":\"$COMMIT_USER\",\"commit_version\":\"$COMMIT_VERSION\",\"commit_branch\":\"$COMMIT_BRANCH\",\"commit_id\":\"$COMMIT_ID\",\"package_time\":\"$PACKAGE_TIME\"}" > $OUTPUT_DIR/static/op/revision
+    - echo "{\"commit_user\":\"$COMMIT_USER\",\"commit_version\":\"$COMMIT_VERSION\",\"commit_branch\":\"$COMMIT_BRANCH\",\"commit_id\":\"$COMMIT_ID\",\"package_time\":\"$PACKAGE_TIME\"}" > $OUTPUT_DIR/static/op/revision.html
+  artifacts:
+    paths:
+      - $OUTPUT_DIR
+    expire_in: 1 day
+
+upload:
+  stage: upload
+  script:
+    - export COMMIT_JOB_NAME=$CI_PROJECT_NAME
+    - export PWD=$(pwd)
+    - export COMMIT_USER=$GITLAB_USER_NAME
+    - export COMMIT_VERSION=V$CI_PIPELINE_ID
+    - export COMMIT_LOG=$(git log -1 --pretty=%B)
+    - export COMMIT_BRANCH=$CI_COMMIT_REF_NAME
+    - export PACKAGE_TIME=$(date +"%Y-%m-%d %H:%M:%S")
+    - export COMMIT_ID=$CI_COMMIT_SHA
+    - export UPLOAD_FILE="$COMMIT_JOB_NAME.tar.gz"
+    - cd $OUTPUT_DIR
+    - tar czvf ../$COMMIT_JOB_NAME.tar.gz *
+    - cd ../
+    - export COMMIT_ETAG=$(qshell qetag $UPLOAD_FILE)
+    - python /srv/projects/qiniu_upload.py $COMMIT_JOB_NAME/$COMMIT_BRANCH/$COMMIT_VERSION/$UPLOAD_FILE $PWD/$UPLOAD_FILE
+    - 'curl -X POST "http://deploy.api.baimaodai.com/api/ServiceVersion/" -H  "accept: application/vnd.api+json" -H  "Content-Type: application/json" -d "{\"data\": {\"attributes\": {\"service\": \"$COMMIT_JOB_NAME\",\"version\": \"$COMMIT_VERSION\",\"branch\": \"$COMMIT_BRANCH\",\"package_name\": \"$COMMIT_JOB_NAME.tar.gz\",\"commit_time\": \"$PACKAGE_TIME\",\"commit_user\": \"$COMMIT_USER\",\"commit_log\": \"$COMMIT_LOG\",\"etag\": \"$COMMIT_ETAG\"},\"type\": \"ServiceVersion\"  }}"'
+    - echo "DONE"

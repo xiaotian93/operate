@@ -1,0 +1,14 @@
+import React, { Component } from 'react';
+import Page from './page';
+import ComponentRoute from './../../../templates/ComponentRoute';
+
+class Cashcoop extends Component{
+    render (){
+        let paths = this.props.location.pathname;
+        return(
+            <Page routes={this.props.routes} params={this.props.params} title="信用贷离线" page_type="cashcoop" path={paths} />
+        )
+    }
+}
+
+export default ComponentRoute(Cashcoop);

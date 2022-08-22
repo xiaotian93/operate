@@ -1,0 +1,323 @@
+import React, { Component } from 'react';
+import { Link } from 'react-router';
+import { Modal , Input , Button , message } from 'antd';
+// import moment from 'moment'
+
+// import Filter from '../../ui/Filter';
+import axios from '../../../ajax/request'
+import { combined_senior_audit , hs_tast_approve } from '../../../ajax/api';
+import { page } from '../../../ajax/config';
+import { format_table_data ,bmd} from '../../../ajax/tool';
+import ComponentRoute from '../../../templates/ComponentRoute';
+import List from '../../templates/list';
+import ListBtn from '../../templates/listBtn';
+class review_hs extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {
+            selectedRowKeys: [],
+            selectedRows: [],
+            loading: false,
+            total:1,
+            current:1,
+            pageSize:page.size,
+            data:[],
+            filter:[],
+            model:{
+                visible:false,
+                title:'确认通过？',
+                text:'',
+                approved:true,
+                id:0
+            },
+            companys:[]
+        };
+    }
+    componentWillMount(){
+        this.columns = [
+            {
+                title: '序号',
+                width:50,
+                dataIndex: 'key',
+                render:(text,record,index)=>{
+                    if(text==="合计"){
+                        return text;
+                    }
+                    return `${index+1}`
+                }
+            },
+            {
+                title: '借款日期',
+                // width:100,
+                dataIndex: 'signDate',
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"signDate",true)
+                }
+            },
+            {
+                title: '保险公司',
+                dataIndex: 'company',
+            },
+            {
+                title: '投保笔数',
+                // width:80,
+                dataIndex: 'count'
+            },
+            {
+                title: '商业险',
+                // width:120,
+                dataIndex: 'totalCommInsurance',
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"totalCommInsurance")
+                }
+            },
+            {
+                title: '交强险',
+                // width:120,
+                dataIndex: 'totalTrafficInsurance',
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"totalTrafficInsurance")
+                }
+            },
+            {
+                title: '车船税',
+                // width:120,
+                dataIndex: 'totalTravelTax',
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"totalTravelTax")
+                }
+            },
+            {
+                title: '操作',
+                // width:230,
+                render: (data) => {
+                    if(data.key==="合计"){
+                        return ""
+                    }
+                    let query = "?filter=";
+                    let filter = [];
+                    filter.push(
+                        {"key":"__SignDate","value":data.signDate,"op":"eq"},
+                        {"key":"__Company","value":data.company,"op":"eq"}
+                    )
+                    query += JSON.stringify(filter);
+                    var btn=[<Button type="primary" size="small" onClick={()=>(this.approved(data,true))}>通过</Button>,
+                    <Button type="danger" size="small" onClick={()=>(this.approved(data,false))}>驳回</Button>,
+                    <Button size="small">
+                        <Link to={"/db/review/hs/detail_list"+query}><span>详情</span></Link>
+                    </Button> ];
+                    return <ListBtn btn={btn} />;
+                    // return (
+                    //     <span>
+                    //         <Button type="primary" size="small" onClick={()=>(this.approved(data,true))}>通过</Button>&emsp;
+                    //         <Button type="danger" size="small" onClick={()=>(this.approved(data,false))}>驳回</Button>&emsp;
+                    //         <Button size="small">
+                    //             <Link to={"/db/review/hs/detail_list"+query}><span>详情</span></Link>
+                    //         </Button> 
+                            
+                    //     </span>
+                    // )
+                }
+            }
+        ];
+        this.filter = {
+            __SignDate:{
+                name:"借贷日期",
+                type:"single_date",
+                placeHolder:"请选择"
+            },
+            __Company:{
+                name:"保险公司",
+                type:"select",
+                placeHolder:"全部",
+                values:JSON.parse(localStorage.getItem("select")).companys
+            }
+        }
+    }
+    componentDidMount(){
+        var select=window.localStorage.getItem(this.props.location.pathname);
+        if(select){
+            this.get_list(1,JSON.parse(select).remberData);
+        }else{
+            this.get_list();
+        }
+    }
+    get_list(page_no,filter=[]){
+        let data = {
+            page:page_no||1,
+            size:page.size,
+            filter:JSON.stringify(filter)
+        }
+        this.setState({
+            loading:true,
+            selectedRowKeys:[]
+        })
+        axios.post(combined_senior_audit,data).then((data)=>{
+            let list = format_table_data(data.data.datas,page_no,page.size);
+            if(list.length>0){
+                list = this.set_total(data.data,list);
+            }
+            this.setState({
+                data:list,
+                loading:false,
+                total:data.totalPage*page.size,
+                current:data.currentPage
+            })
+        });
+    }
+    set_total(data,list){
+        let total = {
+            key:"合计",
+            signDate:"",
+            company:"",
+            count:"",
+            totalCommInsurance:data.totalCommInsurance,
+            totalTrafficInsurance:data.totalTrafficInsurance,
+            totalTravelTax:data.totalTravelTax
+        };
+        list.push(total);
+        return list
+    }
+    get_filter(data){
+        this.setState({
+            filter:data
+        })
+        this.get_list(1,data);
+    }
+    approved(data,pass){
+        this.setState({
+            model:{
+                approved:pass,
+                visible:true,
+                title:pass?'确认通过？':'确认驳回',
+                text:'',
+                id:data.taskIds
+            }
+        })
+    }
+    handleOk(){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                loading:true,
+                text:this.state.model.text,
+                visible:this.state.model.visible,
+                title:this.state.model.title,
+                id:this.state.model.id,
+            }
+        })
+        let ids = this.state.model.id;
+        this.approve_post(ids,this.state.model.approved,this.state.model.text);
+    }
+    approve_post(taskIds,approved,comment){
+        let rqd = [];
+        rqd.push("approved="+approved);
+        rqd.push("comment="+comment);
+        for(let t in taskIds){
+            rqd.push("taskId="+taskIds[t]);
+        }
+        axios.post(hs_tast_approve,rqd.join("&")).then((res)=>{
+            this.handleCancel();
+            message.success(res.msg)
+            this.get_list(1,this.state.filter);
+        });
+    }
+    handleCancel(){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                text:this.state.model.text,
+                loading:false,
+                id:this.state.model.id,
+                title:this.state.model.title,
+                visible:false
+            }
+        })
+    }
+    textChange(e){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                loading:false,
+                text:e.target.value,
+                visible:this.state.model.visible,
+                title:this.state.model.title,
+                id:this.state.model.id,
+            }
+        })
+    }
+
+    page_up(page,pageSize){
+        window.scrollTo(0,0);
+        this.get_list(page,this.state.filter);
+    }
+    render (){
+        // const { selectedRowKeys } = this.state;
+        // let pagination = {
+        //     total : this.state.total,
+        //     current : this.state.current,
+        //     pageSize : this.state.pageSize,
+        //     onChange : this.page_up.bind(this)
+        // }
+        // const rowSelection = {
+        //     selectedRowKeys,
+        //     onChange: (selectedRowKeys, selectedRows) => {
+        //         this.setState({ selectedRowKeys , selectedRows });
+        //     },
+        //     getCheckboxProps: record => ({
+        //         disabled: record.name === 'Disabled User',
+        //         name: record.name
+        //     }),
+        // };
+        // let table_height = window.innerHeight - 332;
+        const table_props = {
+            // rowSelection:rowSelection,
+            // scroll:{y:table_height},
+            columns:this.columns ,
+            dataSource:this.state.data,
+            pagination : false,
+            loading:this.state.loading,
+        }
+        const footer = [
+            <Button key="back" onClick={this.handleCancel.bind(this)}>取消</Button>,
+            <Button key="submit" type="primary" loading={this.state.model.loading} onClick={this.handleOk.bind(this)}>确认</Button>
+        ]
+        const model_props = {
+            visible : this.state.model.visible, 
+            title : this.state.model.title,
+            onOk : this.handleOk.bind(this), 
+            onCancel : this.handleCancel.bind(this),
+            footer : footer
+        }
+        // let paths = this.props.location.pathname;
+        const table={
+            filter:{
+                "data-get":this.get_filter.bind(this),
+                "data-source":this.filter,
+                "data-paths":this.props.location.pathname,
+            },
+            tableInfo:table_props,
+            tableTitle:{
+                left:<span>
+                    金额单位：元
+                </span>,
+                right:null
+            },
+            isFilter:true
+        }
+        return(
+            <div className="Component-body">
+                <List {...table} /> 
+                {/* <Filter data-get={this.get_filter.bind(this)} data-source={this.filter} data-paths={paths} />
+                <Row className="content">
+                    <Table {...table_props} bordered />
+                </Row> */}
+                <Modal {...model_props}>
+                    <Input placeholder="请输入审批意见" value={this.state.model.text} onChange={this.textChange.bind(this)} />
+                </Modal>
+            </div>
+        )
+    }
+}
+
+export default ComponentRoute(review_hs);

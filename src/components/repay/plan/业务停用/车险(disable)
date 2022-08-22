@@ -1,0 +1,13 @@
+import React, { Component } from 'react';
+import Page from './page_cxfq';
+import ComponentRoute from './../../../templates/ComponentRoute';
+
+class Cxfq extends Component{
+    render (){
+        let paths = this.props.location.pathname;
+        return(
+            <Page routes={this.props.routes} params={this.props.params} title="车险分期" page_type="cxfq" path={paths} />
+        )
+    }
+}
+export default ComponentRoute(Cxfq);	

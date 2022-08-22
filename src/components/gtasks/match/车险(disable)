@@ -1,0 +1,374 @@
+import React, { Component } from 'react';
+import { Modal , Input , Button , message } from 'antd';
+
+import TableNormal from '../../../templates/TableNormal';
+import { axios_sh } from '../../../ajax/request';
+import { cxfq_under_review_list , cxfq_product_list , cxfq_business_list , cxfq_first_deny_batch , cxfq_first_pass_batch , cxfq_under_review_export } from '../../../ajax/api';
+import { host_cxfq , page } from '../../../ajax/config';
+import { bmd , format_time } from '../../../ajax/tool';
+import Permissions from '../../../templates/Permissions';
+import ComponentRoute from '../../../templates/ComponentRoute';
+
+const status = 2;
+
+class check_hs extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {
+            selectedRows: [],
+            loading: false,
+            total:1,
+            current:1,
+            pageSize:page.size,
+            data:[],
+            model:{
+                visible:false,
+                loading:false,
+                title:'确认通过？',
+                text:'',
+                approved:true,
+                id:0
+            },
+            companys:[],
+            sumSyx:0,
+            sumJqx:0,
+            sumCcs:0,
+            sumDiscount:''
+        };
+    }
+    componentWillMount(){
+        this.columns = [
+            {
+                title: '序号',
+                dataIndex: 'key',
+                render:(text,record,index)=>{
+                    if(text==="合计"){
+                        return text;
+                    }
+                    return `${index+1}`
+                }
+            },
+            {
+                title: '订单编号',
+                dataIndex: 'orderNo',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '订单时间',
+                dataIndex:"createTime",
+                render:(data)=>{
+                    return data?format_time(data):"-"
+                },
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"createTime")
+                }
+            },
+            {
+                title: '借款方',
+                dataIndex: 'borrower',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '车牌号',
+                dataIndex: 'plateNo',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '发动机号',
+                dataIndex: 'engineNo',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '借款金额',
+                dataIndex:"loanMoney",
+                render:(data)=>{
+                    return data?data.money():"-"
+                },
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"loanMoney")
+                }
+            },
+            {
+                title: '商业险金额',
+                render:(data)=>{
+                    return data.syx?data.syx.money():"-"
+                },
+                sorter: (a, b) => {
+                    return bmd.getSort(a,b,"syx")
+                }
+            },
+            {
+                title: '借款期限(月)',
+                dataIndex: 'periods',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '商户名称',
+                dataIndex: 'businessName',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '产品名称',
+                dataIndex: 'productName',
+                render:(data)=>{
+                    return bmd.show_blank(data)
+                }
+            },
+            {
+                title: '操作',
+                render: (data) => {
+                    return <Permissions size="small" server="bmd-chexianfenqi" permissions={global.AUTHSERVER.cxfq.access.under_review_detail} tag="button" onClick={()=>(this.detail(data.orderNo))} src={'/db/match/cxfq/detail?orderNo='+data.orderNo+'&from=precheck&type=match'}>查看</Permissions>
+                }
+            }
+        ];
+        this.filter = {
+            borrower :{
+                name:"借款方",
+                type:"text",
+                placeHolder:"请输入借款方"
+            },
+            insuranceNo :{
+                name:"保单号",
+                type:"text",
+                placeHolder:"请输入保单号/投保单号"
+            },
+            customerType :{
+                name:"业务类型",
+                type:"select",
+                placeHolder:"请选择",
+                values:[{name:"企业",val:1},{name:"个人",val:0}]
+            },
+            productId :{
+                name:"产品名称",
+                type:"select",
+                placeHolder:"请选择",
+                values:'productIds'
+            },
+            businessName :{
+                name:"商户名称",
+                type:"select",
+                placeHolder:"请输入商户名称",
+                values:'businessIds'
+            },
+            carNo :{
+                name:"车牌号",
+                type:"text",
+                placeHolder:"请输入车牌号/发动机号"
+            }
+        }
+
+    }
+    componentDidMount(){
+        this.get_list();
+        this.get_select();
+    }
+    get_list(page_no,filter={}){
+        this.setState({
+            loading:true,
+            selectedRowKeys:[],
+            selectedRows:[]
+        });
+        // let rqd = {
+        //     page:1,
+        //     page_size:page.size,
+        //     status:status,
+        //     ...filter
+        // }
+        // axios_sh.post(cxfq_under_review_list,rqd).then((data)=>{
+        //     var list=data.data;
+        //     this.setState({
+        //         data:format_table_data(list),
+        //         total:list.total,
+        //         current:list.current,
+        //         loading:false,
+        //         sumSyx:data.sumSyx?data.sumSyx.money():0,
+        //         sumJqx:data.sumJqx?data.sumJqx.money():0,
+        //         sumCcs:data.sumCcs?data.sumCcs.money():0,
+        //         sumDiscount:data.sumDiscount===null?"":data.sumDiscount
+        //     })
+        // });
+    }
+    get_filter(data){
+        this.get_list(1,data);
+        this.setState({
+            filter:data
+        });
+    }
+    get_select(){
+        axios_sh.get(cxfq_product_list).then(data=>{
+            this.setState({
+                productIds:this.filter_value(data.data)
+            })
+        });
+        axios_sh.get(cxfq_business_list).then(data=>{
+            this.setState({
+                businessIds:this.filter_value(data.data)
+            })
+        });
+    }
+    filter_value(arr){
+        let res = [];
+        for(let a in arr){
+            res.push({val:arr[a].id,name:arr[a].name})
+        }
+        return res;
+    }
+    detail(orderNo){
+        window.open('/db/match/cxfq/detail?orderNo='+orderNo+'&from=precheck&type=match');
+    }
+    batch_operation(pass){
+        let ids = [];
+        let rows = this.state.selectedRows;
+        for(let r in rows){
+            ids.push(rows[r].orderNo);
+        }
+        this.approved(ids,pass);
+    }
+    approved(nos,pass){
+        let length = nos.length;
+        this.setState({
+            model:{
+                approved:pass,
+                visible:true,
+                title:pass?('确认所选'+length+'条订单通过？'):('确认所选'+length+'条订单驳回？'),
+                text:'',
+                id:nos.join(",")
+            }
+        })
+    }
+    handleOk(){
+        this.approve_post(this.state.model.id,this.state.model.approved,this.state.model.text);
+
+    }
+    approve_post(orderNo,approved,comment){
+        let rqd={};
+        if(!approved){
+            if(!comment){
+                message.warn("驳回意见不能为空");
+                return;
+            }
+        }
+        rqd.orderNos=orderNo;
+        rqd.comment=comment;
+        this.setState({
+            loading:true
+        });
+        let api=approved?cxfq_first_pass_batch:cxfq_first_deny_batch;
+        axios_sh.post(api,rqd).then((res)=>{
+            this.setState({
+                loading:false
+            });
+            this.handleCancel();
+            message.success(res.msg);
+            this.get_list(1,this.state.filter);
+        });
+    }
+    handleCancel(){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                text:this.state.model.text,
+                id:this.state.model.id,
+                title:this.state.model.title,
+                visible:false,
+                loanNotingImageStorageNoList:this.state.model.loanNotingImageStorageNoList,
+                mortageImageStorageNoList:this.state.model.mortageImageStorageNoList
+            }
+        })
+    }
+    textChange(e){
+        this.setState({
+            model:{
+                approved:this.state.model.approved,
+                text:e.target.value,
+                visible:this.state.model.visible,
+                title:this.state.model.title,
+                id:this.state.model.id,
+            }
+        })
+    }
+    page_up(page,pageSize){
+        window.scrollTo(0,0);
+        this.get_list(page,this.state.filter);
+    }
+    export_excel(){
+        let url = host_cxfq + cxfq_under_review_export;
+        let param = this.state.filter;
+        let querys = [];
+        querys.push("?status="+status)
+        for(let p in param){
+            querys.push(p+"="+param[p]);
+        }
+        window.open(url+querys.join("&"));
+    }
+    render (){
+        let table_new = {
+            axios:axios_sh,
+            path:cxfq_under_review_list,
+            columns:this.columns,
+            filter:this.filter,
+            // "filter-datas" : ["account_all"],
+            "filter-get" : this.get_filter.bind(this),
+            "data-paths":this.props.location.pathname,
+            // "filter-set" : this.set_filter.bind(this),
+            // bindmain:this.bindmain.bind(this),
+            // "req-data":{status:2},
+            select_props:{
+                productIds:this.state.productIds,
+                businessIds:this.state.businessIds
+            },
+            tableTitle:{
+                left:<div>
+                金额单位：元 &emsp;当前查询结果商业险合计:<span className="total-bold">{this.state.sumSyx}</span>元 &emsp;交强险合计:<span className="total-bold">{this.state.sumJqx}</span>元 &emsp;车船税合计:<span className="total-bold">{this.state.sumCcs}</span>元&emsp;
+                {this.state.sumDiscount===''?'':"保证金合计:"+this.state.sumDiscount+"元"}
+            </div>,
+            right:<Permissions server="bmd-chexianfenqi" permissions={global.AUTHSERVER.cxfq.access.under_review_export} tag="button" type="primary" onClick={this.export_excel.bind(this)}>&emsp;导出&emsp;</Permissions>
+            }
+        }
+       
+        const footer = [
+            <Button key="back" onClick={this.handleCancel.bind(this)}>取消</Button>,
+            <Button key="submit" type="primary" loading={this.state.loading_model} onClick={this.handleOk.bind(this)}>确认</Button>
+        ]
+        const model_props = {
+            visible : this.state.model.visible,
+            confirmLoading:false,
+            title : this.state.model.title,
+            onOk : this.handleOk.bind(this),
+            onCancel : this.handleCancel.bind(this),
+            loanNotingImageStorageNoList:this.state.model.loanNotingImageStorageNoList,
+            mortageImageStorageNoList:this.state.model.mortageImageStorageNoList,
+            footer : footer
+        }
+        return(
+            <div className="Component-body">
+                <TableNormal { ...table_new }>
+                    <div className="text-orange">
+                        当前查询结果商业险合计:<span className="total-bold">{this.state.sumSyx}</span>元 &emsp;交强险合计:<span className="total-bold">{this.state.sumJqx}</span>元 &emsp;车船税合计:<span className="total-bold">{this.state.sumCcs}</span>元&emsp;
+                        {this.state.sumDiscount===''?'':"保证金合计:"+this.state.sumDiscount+"元"}
+                    </div>
+                    <Permissions server="bmd-chexianfenqi" roleKey="export" tag="button" type="primary" onClick={this.export_excel.bind(this)}>&emsp;导出&emsp;</Permissions>
+                </TableNormal>
+                <Modal {...model_props}>
+                    {
+                        <Input placeholder="请输入审批意见" value={this.state.model.text} onChange={this.textChange.bind(this)} />
+                    }
+                </Modal>
+            </div>
+        )
+    }
+}
+
+export default ComponentRoute(check_hs);

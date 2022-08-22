@@ -1,0 +1,779 @@
+import React, { Component } from 'react';
+import { Row } from 'antd';
+// import moment from 'moment';
+
+import TableCol from "./table-col";
+// import TableCol from "../../templates/TableCol_4";
+import TimeLine from "./timeLine_cxfq";
+import ImgTag from '../../templates/ImageTag_w';
+
+import Audit from "./auditingView_cxfq";
+import { axios_sh } from "../../ajax/request";
+import { host_cxfq } from "../../ajax/config";
+import { cxfq_img_path , cxfq_contract_path ,cxfq_under_review_detail,cxfq_first_detail,cxfq_second_detail,cxfq_thrice_detail,cxfq_pay_detail,cxfq_loan_detail} from "../../ajax/api";
+
+class LineTable extends Component {
+    constructor (props){
+        super(props);
+        // 识别参数来源   地址栏or属性
+        let audit = false , orderNo , schedule,type;
+        if(props.location){
+            audit = props.location.query.audit==="false"?false:props.location.query.audit;
+            orderNo = props.location.query.orderNo;
+            schedule = (props.location.query.from==="precheck"?false:true); 
+            type=props.location.query.type
+        }else{
+            orderNo = props.orderNo;
+            schedule = false;
+        }
+        this.state={
+            audit:audit,
+            schedule:schedule,
+            base_info:{},
+            product_info:{},
+            money_info:{},
+            repay_account:{},
+            repay_info:{},
+            car_info:{},
+            orderNo:orderNo,
+            orderStatus:0,
+            lic:[],
+            bdImgs:[],
+            type:type
+        }
+        this.type={
+            "match":cxfq_under_review_detail,
+            "check":cxfq_first_detail,
+            "review":cxfq_second_detail,
+            "thrice":cxfq_thrice_detail,
+            "pay":cxfq_pay_detail,
+            "jk":cxfq_loan_detail
+        }
+    }
+    componentWillMount (){
+        this.company_info={
+            borrower:{
+                name:"借款方",
+                // width_key:"120"
+            },
+            phone:{
+                name:"联系方式",
+                // width:"10%"
+            },
+            creditCode:{
+                name:"统一信用代码",
+            },
+            licExpireDate:{
+                name:"营业执照截止日期"
+            },
+            province:{
+                name:"通讯地址",
+                span_val:7,
+                render:e=>{
+                    return e.province+e.city+e.area;
+                }
+            },
+            //city:{
+            //    name:"通讯地址(市)"
+            //},
+            //area:{
+            //    span_val:3,
+            //    name:"通讯地址(区/县)"
+            //},
+            frName:{
+                name:"法人姓名",
+                // width:"10%"
+            },
+            frPhone:{
+                name:"法人手机号",
+            },
+            frIdCard:{
+                span_val:3,
+                name:"法人身份证号"
+            },
+            agentName:{
+                name:"经办人姓名"
+            },
+            agentPhone:{
+                // span_val:3,
+                name:"经办人手机号"
+            },
+            agentIdCard:{
+                span_val:3,
+                name:"经办人证件号",
+            }
+        }
+        this.base_info = {
+            borrower:{
+                name:"借款方",
+                // width_key:"10%"
+            },
+            phone:{
+                name:"手机号",
+                // width:"10%"
+            },
+            idCard:{
+                name:"身份证号",
+            },
+            gender:{
+                name:"性别"
+            },
+            province:{
+                name:"通讯地址",
+                span_val:7,
+                render:e=>{
+                    return e.province+e.city+e.area;
+                }
+            },
+            //city:{
+            //    name:"通讯地址(市)"
+            //},
+            //area:{
+            //    span_val:3,
+            //    name:"通讯地址(区/县)"
+            //}
+        }
+        this.money_info = {
+            loanMoney:{
+                name:"借款金额(元)",
+                render:(data)=>{
+                    return data.loanMoney?data.loanMoney.money():"--"
+                }
+            },
+            multipleRate:{
+                name:"综合费用",
+                render:data=>{
+                    return data.multipleRate+"%"
+                }
+            },
+            periods:{
+                name:"借款期限(月)",
+            },
+            repayDay:{
+                name:"还款日",
+            },
+            loanStartDate:{
+                name:"借款开始时间",
+            },
+            loanEndDate:{
+                name:"借款结束时间",
+            },
+            protocolStorageNo:{
+                name:"借款协议",
+                span_val:3,
+                render:(data)=>{
+                    if(data.protocolStorageNo){
+                        return <a target="_blank" href={host_cxfq+cxfq_contract_path+"?storageNo="+data.protocolStorageNo}>点击查看</a>
+                    }
+                    if(data.onlineContract){
+                        return <a target="_blank" href={data.onlineContract}>点击查看</a>
+                    }
+                    return "--";
+                }
+            }
+        }
+        this.product_info = {
+            productName:{
+                name:"产品名称",
+            },
+            businessName:{
+                name:"商户名称",
+            },
+            generateTime:{
+                name:"订单生成时间",
+                //render:(data)=>{
+                //    return moment(data.generateTime).format("YYYY-MM-DD")
+                //}
+            },
+            uniqId:{
+                name:"渠道订单编号",
+            }
+        }
+        this.jqx_info = {
+            insurCompany:{
+                name:"保险公司",
+                // width_key:"15%",
+                // width_val:"30%",
+                // span_val:3
+            },
+            jqx:{
+                name:"交强险(元)",
+                // span_val:3,
+                render:(data)=>{
+                    return data.jqx?data.jqx.money():"--"
+                }
+            },
+            ccs:{
+                name:"车船税(元)",
+                // span_val:3,
+                render:(data)=>{
+                    return data.ccs?data.ccs.money():"--"
+                }
+            },
+            bdNo:{
+                name:"交强险保单号",
+                // span_val:3
+                render:e=>{
+                    return e.bdNo?"e.bdNo":"--"
+                }
+            },
+            startDate:{
+                name:"交强险开始日期",
+                span_val:3,
+                render:e=>{
+                    return e.startDate?"e.startDate":"--"
+                }
+            },
+            endDate:{
+                name:"交强险结束日期",
+                span_val:3,
+                render:e=>{
+                    return e.endDate?"e.endDate":"--"
+                }
+            }
+        }
+        this.fsx_info = {
+            insurCompany:{
+                name:"保险公司",
+                // width_key:"15%",
+                // width_val:"30%",
+                // span_val:3
+            },
+            syfjx:{
+                name:"附属险(元)",
+                // span_val:3,
+                render:(data)=>{
+                    return data.syfjx?data.syfjx.money():"--"
+                }
+            },
+            bdNo:{
+                name:"附属险保单号",
+                span_val:3,
+                render:e=>{
+                    return e.endDate?"e.bdNo":"--"
+                }
+            },
+            // syxTbdNo:{
+            //     name:"",
+            //     span_val:3
+            // },
+            startDate:{
+                name:"附属险开始日期",
+                span_val:3,
+                render:e=>{
+                    return e.startDate?"e.startDate":"--"
+                }
+            },
+            endDate:{
+                name:"附属险结束日期",
+                span_val:3,
+                render:e=>{
+                    return e.endDate?"e.endDate":"--"
+                }
+            }
+        }
+        this.bill_info = {
+            insurCompany:{
+                name:"保险公司",
+                // width_key:"15%",
+                // width_val:"30%",
+                // span_val:3
+            },
+            syx:{
+                name:"商业险(元)",
+                // span_val:3,
+                render:(data)=>{
+                    if(data.type===1){
+                        return data.syx?data.syx.money():"--"
+                    }else if(data.type===2){
+                        return data.syfjx?data.syfjx.money():"--"
+                    }
+
+                }
+            },
+            bdNo:{
+                name:"商业险保单号",
+                span_val:3,
+                render:(data)=>{
+                    return data.bdNo?<a target="_blank" href={"/bd/indent/cxfq/detail?id="+data.crawlerRequestId}>{data.bdNo}</a>:"--"
+                }
+            },
+            // syxTbdNo:{
+            //     name:"",
+            //     span_val:3
+            // },
+            startDate:{
+                name:"商业险开始日期",
+                span_val:3,
+                render:e=>{
+                    return e.startDate?e.startDate:"--"
+                }
+            },
+            endDate:{
+                name:"商业险结束日期",
+                span_val:3,
+                render:e=>{
+                    return e.endDate?e.endDate:"--"
+                }
+            }
+        }
+        this.payment_info = {
+            amount:{
+                name:"支付金额(元)",
+                render:(data)=>{
+                    return data.amount?data.amount.money():"--"
+                }
+            },
+            accountName:{
+                name:"账户名称"
+            },
+            headBank:{
+                name:"开户总行"
+            },
+            subBank:{
+                name:"开户银行支行"
+            },
+            bankCardNo:{
+                name:"银行账号"
+            },
+            // idCard:{
+            //     name:"收款人证件号"
+            // },
+            province:{
+                name:"开户行所在省",
+                span_val:5,
+                render:e=>{
+                    return e.province?e.province+e.city:"--";
+                }
+            },
+            //city:{
+            //    span_val:3,
+            //    name:"开户行所在市"
+            //}
+        }
+        // 车辆信息
+        this.car_info = {
+            ownerName:{
+                name:"车主姓名"
+            },
+            plateNo:{
+                name:"车牌号"
+            },
+            vinNo:{
+                name:"车架号/vin码",
+                render:e=>{
+                    return e.vinNo?e.vinNo:"--"
+                }
+            },
+            engineNo:{
+                name:"发动机号",
+                render:e=>{
+                    return e.engineNo?e.engineNo:"--"
+                }
+            },
+        }
+        this.repay_info = {
+            name:{
+                name:"被保险人",
+                // width_key:'10%',
+                // width_val:'10%'
+            },
+            idCard:{
+                name:"被保险人证件号"
+            },
+            phone:{
+                name:"被保险人联系方式"
+            },
+            tbr:{
+                name:"投保人",
+                // width_key:'10%'
+            },
+            ownerName:{
+                name:"车主姓名",
+            },
+            plateNo:{
+                name:"车牌号",
+                render:(data)=>{
+                    return data.plateNo===null?'新车未上牌':data.plateNo
+                }
+            },
+            vinNo:{
+                name:"车架号/vin码",
+                render:e=>{
+                    return e.vinNo?e.vinNo:"--"
+                }
+            },
+            engineNo:{
+                name:"发动机号",
+                render:e=>{
+                    return e.engineNo?e.engineNo:"--"
+                }
+            }
+            // carTime:{
+            //     name:"车辆出登日期"
+            // },
+        }
+        this.repay_account = {
+            accountName:{
+                name:"账户名"
+            },
+            //headBank:{
+            //    name:"开户总行",
+            //},
+            bankCardNo:{
+                name:"银行账号"
+            },
+            idCard:{
+                name:"还款方证件号"
+            },
+            phone:{
+                name:"还款方手机号"
+            }
+        }
+    }
+    componentDidMount(){
+        this.getDetail();
+    }
+    downloadIamge (selector, name) {
+        // 通过选择器获取img元素
+        var img = document.querySelector(selector);
+        // 将图片的src属性作为URL地址
+        // var that=this;
+        var url = img.src;
+        var a = document.createElement('a')
+        var event = new MouseEvent('click')
+
+        a.download = name || '下载图片名称'
+        a.href = url
+
+        a.dispatchEvent(event)
+    }
+    getDetail (){
+        axios_sh.get((this.state.type?this.type[this.state.type]:cxfq_loan_detail)+"?orderNo="+this.state.orderNo).then((data)=>{
+            let tbdSyxStorageNoList = [],idcardZM = [],idcardFM = [],lic=[],bdInvoiceStorageNoList=[],bdStorageNoList=[],invoiceStorageNoList=[],drivingLicStorageNo=[],bdImgs=[];
+            let imgs = data.data.simpleStorageList;
+            let borrowerType=data.data.borrowerType;
+            for(let i in imgs){
+                if(imgs[i].usage==="tbdStorageNoList"){
+                    tbdSyxStorageNoList = JSON.parse(imgs[i].storageNos)
+                    for(let b in tbdSyxStorageNoList){
+                        bdImgs.push({src : host_cxfq+cxfq_img_path+"?storageNo="+tbdSyxStorageNoList[b] , des:"投保单" });
+                    }
+                }
+                if(imgs[i].usage==="drivingLicStorageNo"&&data.data.carInfo.plateNo){
+                    bdImgs.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"行驶证" });
+                }
+                if(imgs[i].usage==="invoiceStorageNoList"&&!data.data.carInfo.plateNo){
+                    invoiceStorageNoList = JSON.parse(imgs[i].storageNos)
+                    for(let n in invoiceStorageNoList){
+                        bdImgs.push({src : host_cxfq+cxfq_img_path+"?storageNo="+invoiceStorageNoList[n] , des:"新车发票" });
+                }
+                }
+                if(imgs[i].usage==="bdInvoiceStorageNoList"){
+                    bdInvoiceStorageNoList = JSON.parse(imgs[i].storageNos)
+                    for(let m in bdInvoiceStorageNoList){
+                        bdImgs.push({src : host_cxfq+cxfq_img_path+"?storageNo="+bdInvoiceStorageNoList[m] , des:"保单发票" });
+                    }
+                }
+                if(imgs[i].usage==="bdStorageNoList"){
+                    bdStorageNoList = JSON.parse(imgs[i].storageNos)
+                    for(let p in bdStorageNoList){
+                        
+                        bdImgs.push({src : host_cxfq+cxfq_img_path+"?storageNo="+bdStorageNoList[p] , des:"保单" });
+            
+                    }
+                }
+                if(imgs[i].usage==="idCardZmStorageNo"){
+                    // idcardZM = [{src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"身份证正面" }];
+                    idcardZM.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"身份证正面" });
+                }
+                if(imgs[i].usage==="idCardFmStorageNo"){
+                    // idcardFM = [{src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"身份证反面" }]
+                    idcardZM.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"身份证反面" });
+                }
+                if(imgs[i].usage==="licStorageNo"){
+                    lic.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"营业执照" })
+                }
+                if(imgs[i].usage==="frIdCardZmStorageNo"){
+                    lic.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"法人身份证正面" })
+                }
+                if(imgs[i].usage==="frIdCardFmStorageNo"){
+                    lic.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"法人身份证反面" })
+                }
+                if(imgs[i].usage==="agentIdCardZmStorageNo"){
+                    lic.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"经办人身份证反面" })
+                }
+                if(imgs[i].usage==="agentIdCardFmStorageNo"){
+                    lic.push({src:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"经办人身份证正面" })
+                }
+                //if(imgs[i].usage==="idCardFmStorageNo"){
+                //    idcardFM = [{url:host_cxfq+cxfq_img_path+"?storageNo="+imgs[i].storageNos,des:"身份证反面" }]
+                //}
+            }
+            data.data.insurDetailItemList.sort(function(itemprev,itemnext){
+                if(Date.parse(itemprev.syxStartDate)>Date.parse(itemnext.syxStartDate)){
+                    return 0
+                }else{
+                    return 1
+                }
+            });
+            if(borrowerType===1){
+                this.setState({
+                    base_info:data.data.loanInfo1,
+                    money_info:data.data.loanInfo1,
+                    product_info:data.data.loanInfo1
+                })
+            }else{
+                this.setState({
+                    base_info:data.data.loanInfo,
+                    money_info:data.data.loanInfo,
+                    product_info:data.data.loanInfo
+                })
+            }
+            // let payment_info = data.data.paymentInfoList;
+            // payment_info.push(payment_info[0])
+            this.setState({
+                bill_info_data:data.data.insurDetailItemList,
+                payment_info:data.data.paymentInfoList,
+                repay_account:data.data.borrowerInfo,
+                bill_imgs_storangs:tbdSyxStorageNoList,
+                idcardZM:idcardZM,
+                idcardFM:idcardFM,
+                lic:lic,
+                bdStorageNoList:bdStorageNoList,
+                bdInvoiceStorageNoList:bdInvoiceStorageNoList,
+                invoiceStorageNoList:invoiceStorageNoList,
+                drivingLicStorageNo:drivingLicStorageNo,
+                car_info:data.data.carInfo,
+                repay_info:Object.assign(data.data.borrowerInfo, data.data.beneficiaryInfo,data.data.carInfo),
+                borrowerType:data.data.borrowerType,
+                remark:data.data.remark,
+                bdImgs:bdImgs
+            })
+        });
+        
+    }
+    // audit_type(){
+    //     var data={};
+    //     if(this.state.audit==="thrice"){
+    //         data={
+    //             orderNos:this.state.orderNo,
+    //             comment:this.state.inputValue
+    //         };
+    //     }else{
+    //         data={
+    //             orderNo:this.state.orderNo,
+    //             comment:this.state.inputValue
+    //         };
+    //     }
+
+    //     let url = {
+    //         first:{
+    //             pass:cxfq_first_pass,
+    //             nopass:cxfq_first_deny
+    //         },
+
+    //         second:{
+    //             pass:cxfq_second_pass,
+    //             nopass:cxfq_second_deny
+    //         },
+    //         thrice:{
+    //             pass:cxfq_thrice_pass_batch,
+    //             nopass:cxfq_thrice_deny_batch
+    //         }
+    //     };
+    //     let type = this.state.audit;
+    //     let pass = this.state.radioValue;
+    //     axios_sh.post(url[type][pass],data).then((e)=>{
+    //         message.success(e.msg);
+    //         if(type==="first"){
+    //             hashHistory.push("/db/check/cxfq")
+    //         }
+    //         if(type==="second"){
+    //             hashHistory.push("/db/review/cxfq")
+    //         }
+    //         if(type==="thrice"){
+    //             hashHistory.push("/db/thrice/cxfq")
+    //         }
+    //     });
+    // }
+    render (){
+        let skjg1 = '',skjg2 = '',skjg3 = '',bds1=[],bds2=[],bds3=[],syxReceiptId,fjxReceiptId,jqxReceiptId;
+        let datas = this.state.bill_info_data||[];
+        let payment_info = this.state.payment_info;
+        let syxnum=0,fjxnum=0;
+        // 循环所有保单
+        datas.sort(function(a,b){
+            if(Date.parse(a.syxStartDate)-Date.parse(b.syxStartDate)){
+                return 0;
+            }else{
+                return 1;
+            }
+        })
+        for(let b in datas){
+            datas[b].signDate = this.state.base_info.signDate;
+            if(datas[b].type===1){
+                syxnum++
+                syxReceiptId = datas[b].receiptId;
+                let item = (
+                    <div key={b}>
+                        <div className="sub-title">投保单{syxnum}</div>
+                        <TableCol data-source = {datas[b]} data-columns={this.bill_info} />
+                    </div>
+                )
+                bds1.push(item)
+            }else if(datas[b].type===2){
+                fjxnum++;
+                fjxReceiptId=datas[b].receiptId;
+                let item = (
+                    <div key={b}>
+                        <div className="sub-title">投保单{fjxnum}</div>
+                        <TableCol data-source = {datas[b]} data-columns={this.fsx_info} />
+                    </div>
+                )
+                bds2.push(item)
+            }else{
+                jqxReceiptId=datas[b].receiptId;
+                let item = (
+                    <div key={b}>
+                        <div className="sub-title">投保单1</div>
+                        <TableCol data-source = {datas[b]} data-columns={this.jqx_info} />
+                    </div>
+                )
+                bds3.push(item)
+            }
+        }
+        // 循环所有收款机构
+        for(let p in payment_info){
+            p = parseInt(p,10);
+            let item = (
+                <div key={p+"p2"}>
+                    <div className="sub-title">收款账户信息{p+1}</div>
+                    <TableCol data-source = {payment_info[p]} data-columns={this.payment_info} />
+                </div>
+            )
+            if(payment_info[p].receiptId===syxReceiptId&&bds1.length>0){
+                skjg1 = item;
+                bds1.push(skjg1);
+            }
+            if(payment_info[p].receiptId===fjxReceiptId&&bds2.length>0){
+                skjg2 = item;
+                bds2.push(skjg2);
+            }
+            if(payment_info[p].receiptId===jqxReceiptId&&bds3.length>0){
+                skjg3 = item;
+                bds3.push(skjg3);
+            }
+        }
+        // bds1.push(skjg1);
+        // bds2.push(skjg2);
+        // bds3.push(skjg3);
+        let bill_imgs = [],bdStorageNoList=[],bdInvoiceStorageNoList=[],invoiceStorageNoList=[];
+        let bill_imgs_storangs = this.state.bill_imgs_storangs;
+        for(let b in bill_imgs_storangs){
+            bill_imgs.push({src : host_cxfq+cxfq_img_path+"?storageNo="+bill_imgs_storangs[b] , des:"投保单" });
+        }
+        for(let n in this.state.invoiceStorageNoList){
+                invoiceStorageNoList.push({src : host_cxfq+cxfq_img_path+"?storageNo="+this.state.invoiceStorageNoList[n] , des:"新车发票" });
+        }
+        for(let p in this.state.bdStorageNoList){
+            if(p===0){
+                bdStorageNoList.push({src : host_cxfq+cxfq_img_path+"?storageNo="+this.state.bdStorageNoList[p] , des:"保单" ,btn:'true'});
+            }else{
+                bdStorageNoList.push({src : host_cxfq+cxfq_img_path+"?storageNo="+this.state.bdStorageNoList[p] , des:"保单" });
+
+            }
+        }
+        for(let m in this.state.bdInvoiceStorageNoList){
+            bdInvoiceStorageNoList.push({src : host_cxfq+cxfq_img_path+"?storageNo="+this.state.bdInvoiceStorageNoList[m] , des:"保单发票" });
+        }
+        let audit_dom = (
+            <Row>
+                <Audit orderNo={this.state.orderNo} type={this.state.audit} />
+            </Row>
+        );
+        return (
+            <div>
+                {
+                    this.state.schedule||this.state.audit?<div className="detail_card">
+                <div className="title">
+                            <div className="icon" />
+                            <span className="titleWord">审核意见</span>
+                        </div>
+                    {this.state.schedule?<TimeLine pild={this.state.orderNo} />:""}
+                    { this.state.audit?audit_dom:"" }
+                </div>:null
+                }
+                
+                <div className="detail_card">
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">{this.state.borrowerType===0?'个人借款信息':'企业借款信息'}</span>
+                    </div>
+                    {
+                        this.state.borrowerType===0?<div className="content">
+                            <ImgTag imgs={this.state.idcardZM} />
+                        </div>:<div className="content">
+                            <ImgTag imgs={this.state.lic} />
+                        </div>
+                    }
+                    <div className="content query-sh">
+                        <TableCol data-source={this.state.base_info} data-columns={this.state.borrowerType===0?this.base_info:this.company_info} />
+                        <TableCol data-source={this.state.money_info} data-columns={this.money_info} />
+                        <TableCol data-source={this.state.product_info} data-columns={this.product_info} />
+                    </div>
+                </div>
+                <div className="detail_card">
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">保单信息</span>
+                    </div>
+                    <div className="content clearfix">
+                        <ImgTag imgs={this.state.bdImgs} />
+                        {
+                        //     <Card card={bill_imgs} />
+                        // <Card card={invoiceStorageNoList} />
+                        // {
+                        //     this.state.car_info.plateNo?<Card card={this.state.drivingLicStorageNo} />:''
+                        // }
+                        // <Card card={bdStorageNoList} orderNo={this.state.orderNo} />
+                        // <Card card={bdInvoiceStorageNoList} orderNo={this.state.orderNo} />
+                        }
+                        
+                    </div>
+                    <div className ="content query-sh">
+                        {skjg1!==''?<div className="sub-title">商业险</div>:''}
+                        { bds1 }
+                        {skjg2!==''?<div className="sub-title">商业附属险</div>:''}
+                        { bds2 }
+                        {skjg3!==''?<div className="sub-title">交强险|车船税（代缴）</div>:''}
+                        { bds3 }
+                    </div>
+                    <div className ="content query-sh">
+                        <TableCol data-source={this.state.repay_info} data-columns={this.repay_info} />
+                    </div>
+                    <div className ="content query-sh">
+                        <div style={{fontSize:"14px",color:"#393A3E",marginBottom:"10px"}}>备注</div>
+                        {
+                            this.state.remark?<div style={{width:"100%",border:"1px solid #ccc",height:"auto",fontSize:"14px",lineHeight:"18px",padding:"10px"}}>{this.state.remark}</div>:"未填写"
+                        }
+
+                        {/*<TableCol data-source={this.state.car_info} data-columns={this.car_info} />*/}
+                    </div>
+                </div>
+                <div className="detail_card">
+                    <div className="title">
+                        <div className="icon" />
+                        <span className="titleWord">还款账户信息</span>
+                    </div>
+                    <div className ="content query-sh">
+                        <TableCol data-source={this.state.repay_account} data-row={8} data-columns={this.repay_account} />
+                    </div>
+                </div>
+                
+            </div>
+        )
+    }
+
+}
+export default LineTable;

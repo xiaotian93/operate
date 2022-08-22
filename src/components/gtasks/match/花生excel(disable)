@@ -1,0 +1,123 @@
+import React, { Component } from 'react';
+import { Table , Row , Col , Button , message } from 'antd';
+// import moment from 'moment'
+
+import axios from '../../../ajax/request';
+import { insert_excel } from '../../../ajax/api';
+import { format_table_data } from '../../../ajax/tool';
+
+class Review extends Component{
+    constructor(props) {
+        super(props);
+        this.state = {
+            loading: false,
+            data:format_table_data(JSON.parse(localStorage.getItem("insurance_excel_import")))
+        };
+    }
+    componentWillMount(){
+        this.columns = [
+            {
+                title: '签单日期',
+                dataIndex: 'signDate'
+            },
+            {
+                title: '保险公司',
+                dataIndex:'insurCompanyName'
+            },
+            {
+                title: '保单号',
+                dataIndex: 'insurNo'
+            },
+            {
+                title: '投保人',
+                dataIndex: 'policyPerson',
+                width:250,
+            },
+            {
+                title: '被投保人',
+                dataIndex: 'beneficiary',
+            },
+            {
+                title: '车牌号',
+                dataIndex: 'carNumber'
+            },
+            {
+                title: '车型',
+                dataIndex: 'carType',
+            },
+            {
+                title: 'vin码/车架号',
+                dataIndex: 'carVin',
+                width:250
+            },
+            {
+                title: '发动机号',
+                dataIndex: 'amount2',
+            },
+            {
+                title: '起保日期',
+                dataIndex: 'startTime',
+            },
+            {
+                title: '终保日期',
+                dataIndex: 'endTime',
+            },
+            {
+                title: '商业险',
+                dataIndex: 'carInsur',
+            },
+            {
+                title: '交强险',
+                dataIndex: 'compulsoryInsur',
+            },
+            {
+                title: '车船税',
+                dataIndex: 'carTax',
+            },
+            {
+                title: '滞纳金',
+                dataIndex: 'lateFee',
+            },
+            {
+                title: '车辆初登日期',
+                dataIndex: 'firstRegistTime',
+            }
+        ]
+    }
+
+    confirm_list(){
+        let url = insert_excel;
+        let data = {
+            insurances:localStorage.getItem("insurance_excel_import")
+        };
+        axios.post(url,data).then((data)=>{
+            message.info(data.msg);
+            let path = document.location.pathname;
+            path = path.split("/").splice(0,4).join("/");
+            if(data.status===0){
+                window.location.href = path;
+            }
+        })
+    }
+    
+    render (){
+        return(
+            <div className="Component-body">
+                <Row className="path">
+                    <Col span={24}>
+                        <span className="f2">审核管理&nbsp;&gt;&nbsp;</span><span className="f2 text-blue">待匹配</span>
+                    </Col>
+                </Row>
+                <Row className="content">
+                    <Table scroll={{ x: 2000 }} columns={this.columns} pagination={false} dataSource={this.state.data} bordered loading={this.state.loading} />
+                    <br />
+                    <Col span={24} style={{textAlign:'center'}}>
+                        <Button size="large" type="primary" onClick={this.confirm_list.bind(this)}>&emsp;确&emsp;定&emsp;</Button>
+                    </Col>
+                </Row>
+            </div>
+        )
+    }
+}
+
+export default Review;

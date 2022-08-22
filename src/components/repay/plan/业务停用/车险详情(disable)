@@ -1,0 +1,624 @@
+// 确认还款逻辑不通
+import React, { Component } from 'react';
+import { Table , Row , Col , Tabs , Form } from 'antd';
+
+// import LineTable from '../../ui/Line_Table';
+import RepayConfirm from '../elements/confirm';
+import Particulars from '../../particulars/particulars';
+import { axios_repay } from '../../../ajax/request';
+import { repay_detail } from '../../../ajax/api';
+import { format_table_data } from '../../../ajax/tool';
+import Permissions from '../../../templates/Permissions';
+import LineTable from '../../../templates/TableCol_4';
+
+const TabPane = Tabs.TabPane;
+
+
+class Detail extends Component{
+    constructor(props) {
+        super(props);
+        let paths = this.props.location.pathname.split("/");
+        this.state = {
+            plan:[],
+            selectValue:"",
+            dateValue:undefined,
+            contract_no:this.props.location.query.contract_no,
+            pay_type:paths[2],
+            title:paths[3],
+            lateDay:0,
+            loading:false
+        };
+    }
+    componentWillMount(){
+        let industryStrs = {"1":"居民服务和其他服务业","2":"建筑业","3":"交通运输、仓储和邮政业","4":"农、林、牧、渔业","5":"采矿业","6":"制造业","7":"电力、燃气及水的生产和供应业","8":"信息传输、计算机服务和软件业","9":"批发和零售业","10":"住宿和餐饮业","11":"房地产业","12":"租赁和商务服务业","13":"其他"}
+        let purposeStrs = {"1":"流动资金贷款 ","2":"固定资产投资贷款 ","3":"其他"}
+        let loan_typeStrs = {"1":"信用  ","2":"保证  ","3":"抵押   ","4":"质押  ","5":"其他"}
+        // let pay_status = {"0":"未还款","1":"已还清","2":"逾期未还","3":"逾期已还清"}
+        let pay_status_class = {"0":"","1":"text-success","2":"text-danger","3":"text-orange","4":"text-success"}
+        this.columns = [
+            {
+                title: '期数',
+                width:70,
+                dataIndex: 'phaseStr'
+            },
+            {
+                title: '应还日期',
+                width:100,
+                dataIndex: 'repayDate'
+            },
+            {
+                title: '应还本金',
+                width:100,
+                render:data=>{
+                    return data.principal.money()
+                }
+            },
+            {
+                title: '应还利息',
+                width:100,
+                render:data=>{
+                    return data.interest.money()
+                }
+            },
+            {
+                title: '应还服务费',
+                width:100,
+                render:data=>{
+                    return data.serviceFee.money()
+                }
+            },
+            {
+                title: '应还其他费用',
+                width:100,
+                render:data=>{
+                    return data.otherFee.money()
+                }
+			},
+			{
+                title: '应还逾期罚息',
+                width:100,
+                render:data=>{
+                    return data.overdueFee.money()
+                }
+            },
+            {
+                title: '应还违约金',
+                width:100,
+                render:data=>{
+                    return data.penaltyFee.money()
+                }
+			},
+            {
+                title: '应还提前结清手续费',
+                width:100,
+                render:data=>{
+                    return data.repayAheadPenaltyFee.money()
+                }
+			},
+			{
+                title: '应还合计',
+                width:100,
+                render:data=>{
+                    return data.needPayMoney.money()
+                }
+            },
+            {
+                title: '已还合计',
+                width:100,
+                render:data=>{
+                    return data.returnMoney.money()
+                }
+            },
+            {
+                title: '已还本金',
+                width:100,
+                render:data=>{
+                    return data.returnPrincipal.money()
+                }
+            },
+            {
+                title: '已还利息',
+                width:100,
+                render:data=>{
+                    return data.returnInterest.money()
+                }
+            },
+            {
+                title: '已还服务费',
+                width:100,
+                render:data=>{
+                    return data.returnServiceFee.money()
+                }
+            },
+            {
+                title: '已还其他费用',
+                width:100,
+                render:data=>{
+                    return data.returnOtherFee.money()
+                }
+			},
+			{
+                title: '已还逾期罚息',
+                width:100,
+                render:data=>{
+                    return data.returnOverdueFee.money()
+                }
+            },
+            {
+                title: '减免逾期罚息',
+                width:100,
+                render:data=>{
+                    return (0-data.discountOverdueFee).money()
+                }
+			},
+            {
+                title: '已还违约金',
+                width:100,
+                render:data=>{
+                    return data.returnPenaltyFee.money()
+                }
+			},
+            {
+                title: '已还提前结清手续费',
+                width:100,
+                render:data=>{
+                    return data.returnRepayAheadPenaltyFee.money()
+                }
+			},
+            
+            {
+                title: '实际还款日期',
+                width:100,
+                dataIndex: 'returnDate'
+            },
+            {
+                title: '还款状态',
+                width:100,
+                render:(data)=>{
+                    return <span className={pay_status_class[data.status]}>{data.statusStr}</span>
+                }
+            },
+            {
+                title: '操作',
+                width:100,
+                render:(data)=>{
+                    if(data.status===2){
+                        return <Permissions server={global.AUTHSERVER.cxfq.key} tag="link" className="f3 text-blue" onClick={()=>(this.pay_click(data))}>确认还款</Permissions>
+                    }else{
+                        return ""
+                    }
+                }
+            }
+        ]
+        let period_type = {1: "日", 2: "周", 3: "月", 4: "季度", 5: "年"}
+        this.columns_contracts = [
+            {
+                title: '产品名称',
+                dataIndex: 'loanSystem.name'
+            },
+            {
+                title: '',
+                dataIndex: 'blank1'
+            },
+            {
+                title: '订单编号',
+                dataIndex: 'contactInfo.domainNo'
+            },
+            {
+                title: '合同编号',
+                dataIndex: 'contactInfo.contractNo'
+            },
+            {
+                title: '',
+                dataIndex: 'blank1'
+            },
+            {
+                title: '合同状态',
+                dataIndex: 'contactInfo.statusStr'
+            },
+            {
+                title: '合同名称',
+                dataIndex: 'mpDefault.loanContractName'
+            },
+            {
+                title: '',
+                dataIndex: 'blank1'
+            },
+            {
+                title: '合同签订日期',
+                dataIndex: 'mpDefault.signDate'
+            },
+            {
+                title: '借款方',
+                className: "grey",
+                dataIndex: 'contactInfo.name'
+            },
+            {
+                title: '客户类型',
+                className: "grey",
+                render:(data)=>{
+                    return data.contactInfo.borrowType===0?"个人":"企业"
+                }
+            },
+            {
+                title: '借款金额',
+                className: "grey",
+                render:(data)=>{
+                    return data.contactInfo.loanAmount.money()
+                }
+            },
+            {
+                title: '借款期限',
+                render:(data) => {
+                    return data.contactInfo.periodTerm+"("+ period_type[data.contactInfo.periodType] +")";
+                }
+            },
+            {
+                title: '借款开始日期',
+                dataIndex: 'contactInfo.loanStartDate'
+            },
+            {
+                title: '借款截止日期',
+                dataIndex: 'contactInfo.loanEndDate'
+            },
+            {
+                title: '年化利率',
+                className: "grey",
+                dataIndex: 'contactInfo.yearRate'
+            },
+            {
+                title: '还款来源',
+                className: "grey",
+                render:(data)=>{
+                    return data.contactInfo.borrowType===0?"工资":"营业收入"
+                }
+            },
+            {
+                title: '还款方式',
+                className: "grey",
+                dataIndex: 'mpDefault.lending_pay_type'
+            },
+            {
+                title: '借款投向',
+                render:(data)=>{
+                    return industryStrs[data.mpDefault.industry];
+                }
+            },
+            {
+                title: '借款方式',
+                render:(data)=>{
+                    return loan_typeStrs[data.mpDefault.loanType];
+                }
+            },
+            {
+                title: '借款用途',
+                render:(data)=>{
+                    return purposeStrs[data.mpDefault.purpose];
+                }
+            },
+            {
+                title: '是否展期',
+                className: "grey",
+                render:(data)=>{
+                    return data.mpDefault.isExtend?"是":"否"
+                }
+            },
+            {
+                title: '',
+                className: "grey",
+                dataIndex: 'blank1'
+            },
+            {
+                title: '',
+                className: "grey",
+                dataIndex: 'blank1'
+            },
+            {
+                title: '附件',
+                className: "grey",
+                render:(data)=>{
+                    return (
+                        <span>
+                            <a target="_blank" href={"http://ot.baimaodai.com/contract/trust?contract_no="+this.state.contract_no}>《征信授权书》.pdf&emsp;</a> <br />
+                            <a target="_blank" href={"http://ot.baimaodai.com/contract?contract_no="+this.state.contract_no}>《借款合同》.pdf</a> <br />
+                            <a target="_blank" href={"http://res.baimaodai.com/web/ygd/file/4.0-bmd-xxsqxy.20180228.pdf"}>《信息授权书》.pdf</a><br />
+                            <a target="_blank" href={"http://res.baimaodai.com/web/ygd/file/ygd-ygcnh.20180102.pdf"}>《承诺书》.pdf</a>
+                        </span>
+                    )
+                }
+            },
+            {
+                title: '',
+                className: "grey",
+                dataIndex: 'blank1'
+            },
+            {
+                title: '',
+                className: "grey",
+                dataIndex: 'blank1'
+            }
+        ]
+        this.columns_contract = {
+            "name1":{
+                name: '产品名称',
+                render:e=>{
+                    return e.loanSystem.name
+                }
+            },
+            'domainNo':{
+                name: '订单编号',
+                render:e=>{
+                    return e.contactInfo.domainNo
+                }
+            },
+            'contractNo':{
+                name: '合同编号',
+                render:e=>{
+                    return e.contactInfo.contractNo
+                }
+            },
+            
+            'statusStr':{
+                name: '合同状态',
+                render:e=>{
+                    return e.contactInfo.statusStr
+                }
+            },
+            'loanContractName':{
+                name: '合同名称',
+                render:e=>{
+                    return e.mpDefault.loanContractName
+                }
+            },
+            
+            'signDate':{
+                name: '合同签订日期',
+                render:e=>{
+                    return e.mpDefault.signDate
+                }
+            },
+            'name':{
+                name: '借款方',
+                render:e=>{
+                    return e.contactInfo.name
+                }
+            },
+            "borrowType1":{
+                name: '客户类型',
+                className: "grey",
+                render:(data)=>{
+                    if(this.state.title==="cashloan"){
+                        return "个人"
+                    }else{
+                        return data.contactInfo.borrowType===0?"个人":"企业"
+                    }
+                }
+            },
+            "loanAmount":{
+                name: '借款金额',
+                className: "grey",
+                render:(data)=>{
+                    if(this.state.title==="cashloan"){
+                        return data.amount.money();
+                    }else{
+                        return data.contactInfo.loanAmount.money()
+                    }
+                }
+            },
+            "periodTerm":{
+                name: '借款期限',
+                render:(data) => {
+                    if(this.state.title==="cashloan"){
+                        var type={"DAY":"日","MONTH":"个月","YEAR":"年"};
+                        return data.term+"("+type[data.termType]+")";
+                    }
+                    return data.contactInfo.periodTerm+"("+ period_type[data.contactInfo.periodType] +")";
+                }
+            },
+            'loanStartDate':{
+                name: '借款开始日期',
+                render:e=>{
+                    return e.contactInfo.loanStartDate
+                }
+            },
+            'loanEndDate':{
+                name: '借款截止日期',
+                render:e=>{
+                    return e.contactInfo.loanEndDate
+                }
+            },
+            'yearRate':{
+                name: '年化利率',
+                render:e=>{
+                    return e.contactInfo.yearRate
+                }
+            },
+            "borrowType":{
+                name: '还款来源',
+                className: "grey",
+                render:(data)=>{
+                    return data.contactInfo.borrowType===0?"工资":"营业收入"
+                }
+            },
+            'lending_pay_type':{
+                name: '还款方式',
+                render:e=>{
+                    return e.mpDefault.lending_pay_type
+                }
+            },
+            'industry':{
+                name: '借款投向',
+                render:(data)=>{
+                    return industryStrs[data.mpDefault.industry];
+                }
+            },
+            'loanType':{
+                name: '借款方式',
+                render:(data)=>{
+                    return loan_typeStrs[data.mpDefault.loanType];
+                }
+            },
+            'purpose':{
+                name: '借款用途',
+                render:(data)=>{
+                    return purposeStrs[data.mpDefault.purpose];
+                }
+            },
+            'isExtend':{
+                name: '是否展期',
+                className: "grey",
+                render:(data)=>{
+                    return data.mpDefault.isExtend===0?"否":"是"
+                }
+            },
+            'fj':{
+                name: '附件',
+                className: "grey",
+                render:(data)=>{
+                    return (
+                        <span>
+                            <a target="_blank" href={"http://ot.baimaodai.com/contract/trust?contract_no="+this.state.contract_no}>《征信授权书》.pdf&emsp;</a> <br />
+                            <a target="_blank" href={"http://ot.baimaodai.com/contract?contract_no="+this.state.contract_no}>《借款合同》.pdf</a> <br />
+                            <a target="_blank" href={"http://res.baimaodai.com/web/ygd/file/4.0-bmd-xxsqxy.20180228.pdf"}>《信息授权书》.pdf</a><br />
+                            <a target="_blank" href={"http://res.baimaodai.com/web/ygd/file/ygd-ygcnh.20180102.pdf"}>《承诺书》.pdf</a>
+                        </span>
+                    )
+                }
+            }
+        }
+        // 初始化数据
+        this.form_init_data = {
+            repay_order_no:"",
+            date:undefined,
+            remark:"",
+            repay_type:undefined
+        }
+    }
+    componentDidMount(){
+        this.get_data();
+    }
+    tab_change(e){
+
+    }
+    get_data(){
+        let rqd = {
+            contract_id:this.state.contract_no
+        }
+        axios_repay.post(repay_detail,rqd).then((data)=>{
+            this.show_pay = data.data.repayPlanTotal.repayPhase;
+            let list = format_table_data(data.data.lstRepayPlan);
+            list = this.set_total(list,data.data.repayPlanTotal)
+            this.setState({
+                plan : list,
+                contract : data.data
+            })
+        })
+    }
+    set_total(list,data){
+        let total = {
+            principal : 0,
+            interest : 0,
+            serviceFee : 0,
+            overdueMoney : 0,
+            penaltyFee : 0,
+            returnPenaltyFee : 0,
+            returnMoney : 0,
+            returnPrincipal : 0,
+            returnInterest : 0,
+            returnOverdueMoney : 0,
+            returnServiceFee : 0,
+            repayAheadPenaltyFee:0,
+            returnRepayAheadPenaltyFee:0
+        };
+        total.repayAheadPenaltyFee=data.repayAheadPenaltyFee||0;
+        total.returnRepayAheadPenaltyFee=data.returnRepayAheadPenaltyFee||0;
+        total.principal = data.principal;
+        total.interest = data.interest;
+        total.penaltyFee = data.penaltyFee||0;
+        total.returnPenaltyFee = data.returnPenaltyFee||0;
+        total.serviceFee = data.serviceFee;
+        total.overdueMoney = data.overdueMoney;
+        total.returnMoney = data.returnMoney;
+        total.returnPrincipal = data.returnPrincipal;
+        total.returnInterest = data.returnInterest;
+        total.returnOverdueMoney = data.returnOverdueMoney;
+        total.returnServiceFee = data.returnServiceFee;
+        total.otherFee = data.otherFee;
+        total.overdueFee = data.overdueFee;
+        total.returnOtherFee = data.returnOtherFee||0;
+        total.returnOverdueFee = data.returnOverdueFee||0;
+        total.discountOverdueFee = data.discountOverdueFee||0;
+        total.needPayMoney = data.needPayMoney||0;
+        total.overdueFee = data.overdueFee||0;
+        total.key = "total";
+        total.phaseStr = "";
+        total.repayDate = "合计";
+        total.returnDate = "";
+        total.statusStr = "";
+        total.phase = 0;
+        list.push(total);
+        return list;
+    }
+    pay_click(data){
+        this.confirm_modal.get_cofirm_info(data.domainNo,data.phase);
+    }
+
+    // 绑定还款确认弹窗
+    bindConfirmModal(main){
+        this.confirm_modal = main;
+    }
+
+    render (){
+        const table_props = {
+            columns:this.columns ,
+            dataSource:this.state.plan,
+            pagination : false,
+            loading:this.state.loading,
+            scroll:{x:2000,y:window.innerHeight-310}
+        }
+        let order_detail = '';
+        const products = ["zzb","hs","cxfq","fdd","cashloan"];
+        if(this.state.contract){
+            let product = this.state.contract.loanSystem.productLine;
+            let orderNo = this.state.contract.contactInfo.domainNo;
+            if(products.indexOf(product)>=0){
+                order_detail = (
+                    <TabPane tab="进件详情" key="detail4" style={{padding:"0px"}}>
+                        <Particulars orderNo={orderNo} product={product} />
+                    </TabPane>
+                )
+            }
+        }
+        return(
+            <div>
+                <Row className="content" style={{marginBottom:"30px"}}>
+                    <Col span={24} >
+                        <Tabs defaultActiveKey="1" onChange={this.tab_change} className="sh_tab">
+                            <TabPane tab="还款计划" key="detail1">
+                                <div className="detail-content">
+                                    <div className="detail-body">
+                                        <Table {...table_props} bordered />
+                                    </div>
+                                </div>
+                            </TabPane>
+                            <TabPane tab="合同信息" key="detail2">
+                                <div className="detail-content">
+                                    <div className="detail-body">
+                                        <LineTable line={3} data-columns={this.columns_contract} data-source={this.state.contract} />
+                                    </div>
+                                </div>
+                            </TabPane>
+                            { order_detail }
+                            <TabPane tab="操作记录" key="detail3">
+                                <h3>待开发</h3>
+                            </TabPane>
+                        </Tabs>
+                    </Col>
+                </Row>
+                <RepayConfirm bindmain={this.bindConfirmModal.bind(this)} />
+            </div>
+        )
+    }
+}
+
+export default Form.create()(Detail);

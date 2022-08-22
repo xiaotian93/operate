@@ -1,0 +1,593 @@
+//参数解释  title:表头   secondary：二级object  type：后台数据名称  value：数据值  match：是否需要匹配
+//借款个人信息
+export const person=[
+    {
+        value:"",
+        title:"借款方",
+        secondary:'',
+        type:"name",
+        match:false
+    },
+    {
+        title:"手机号",
+        value:"",
+        secondary:'',
+        type:"phone",
+        match:false
+    },
+    {
+        title:"身份证号",
+        value:"",
+        secondary:'',
+        type:"id",
+        match:false
+    },
+    {
+        title:"性别",
+        value:"",
+        secondary:'',
+        type:"gender",
+        match:false
+    },
+    {
+        title:"通讯地址",
+        value:"",
+        secondary:"address",
+        type:"province",
+        match:false
+    },
+    {
+        title:"通讯地址（市）",
+        value:"",
+        secondary:"address",
+        type:"city",
+        match:false
+    },
+    {
+        title:"通讯地址（区/县）",
+        value:"",
+        secondary:"address",
+        type:"district",
+        match:false
+    },
+    {
+        title:"通讯地址（详细）",
+        value:"",
+        secondary:"address",
+        type:"detail",
+        match:false
+    }
+];
+//借款信息
+export const borrow_info=[
+    {
+        title:"借款金额（元）",
+        value:"",
+        secondary:'',
+        type:"amount",
+        match:false
+    },
+    {
+        title:"综合费率（%）",
+        value:"",
+        secondary:'',
+        type:"interest_rate",
+        match:false
+    },
+    {
+        title:"借款期限（月）",
+        value:"",
+        secondary:'',
+        type:"loan_period",
+        match:false
+    },
+    {
+        title:"借款开始时间",
+        value:"",
+        secondary:'',
+        type:"start_date",
+        match:false
+    },
+    {
+        title:"借款结束时间",
+        value:"",
+        secondary:'',
+        type:"end_date",
+        match:false
+    },
+    {
+        title:"还款日",
+        value:"",
+        secondary:'',
+        type:"repayment_date",
+        match:false
+    },
+    {
+        title:"借款协议",
+        value:"",
+        secondary:'',
+        type:"online_contract",
+        match:false,
+        colSpan:3
+    },
+    {
+        title:"",
+        value:"",
+        secondary:'',
+        type:"",
+        match:false
+    },
+    {
+        title:"产品名称",
+        value:"",
+        secondary:'',
+        type:"project_name",
+        match:false
+    },
+    {
+        title:"商户名称",
+        value:"",
+        secondary:'',
+        type:"business_name",
+        match:false
+    },
+    {
+        title:"订单生成时间",
+        value:"",
+        secondary:'',
+        type:"signTime",
+        match:false,
+        colSpan:3
+    },
+    {
+        title:"",
+        value:"",
+        secondary:'',
+        type:"",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        secondary:'',
+        type:"",
+        match:false
+    }
+];
+//保单信息
+export const policy_info=[
+    {
+        title:"保险公司",
+        value:"",
+        secondary:"",
+        type:"company",
+        match:true
+    },
+    {
+        title:"商业险投保单号",
+        value:"",
+        secondary:"",
+        type:"comm_insurance_apply_id",
+        match:false
+    },
+    {
+        title:"交强险投保单号",
+        value:"",
+        secondary:"",
+        type:"traffic_insurance_apply_id",
+        match:false
+    },
+    {
+        title:"商业险保单号",
+        value:"",
+        secondary:"",
+        type:"comm_insurance_id",
+        match:false
+    },
+    {
+        title:"交强险保单号",
+        value:"",
+        secondary:"",
+        type:"traffic_insurance_id",
+        match:false
+    },
+    {
+        title:"签单日期",
+        value:"",
+        secondary:"",
+        type:"signDate",
+        match:true
+    },
+    {
+        title:"商业险开始日期",
+        value:"",
+        secondary:"",
+        type:"comm_start_date",
+        match:false
+    },
+    {
+        title:"商业险结束日期",
+        value:"",
+        secondary:"",
+        type:"comm_end_date",
+        match:false
+    },
+    {
+        title:"商业险（元）",
+        value:"",
+        secondary:"fee",
+        type:"commInsurance",
+        match:true
+    },
+    {
+        title:"交强险（元）",
+        value:"",
+        secondary:"fee",
+        type:"trafficInsurance",
+        match:true
+    },
+    {
+        title:"车船险（元）",
+        value:"",
+        secondary:"fee",
+        type:"travelTax",
+        match:true
+    },
+    {
+        title:"滞纳金（元）",
+        value:"",
+        secondary:"fee",
+        type:"lateFee",
+        match:true
+    },
+    {
+        title:"被保险人",
+        value:"",
+        secondary:"",
+        type:"name",
+        match:false
+    },
+    {
+        title:"被保险人证件号",
+        value:"",
+        secondary:"",
+        type:"id_number",
+        match:false
+    },
+    {
+        title:"被保险人联系方式",
+        value:"",
+        secondary:"",
+        type:"contact",
+        match:false
+    },
+    {
+        title:"投保人",
+        value:"",
+        secondary:"",
+        type:"policyPerson",
+        match:false
+    },
+    // {
+    //     title:"",
+    //     value:"",
+    //     secondary:"",
+    //     type:"",
+    //     match:false
+    // },
+    // {
+    //     title:"",
+    //     value:"",
+    //     secondary:"",
+    //     type:"",
+    //     match:false
+    // },
+    // {
+    //     title:"",
+    //     value:"",
+    //     secondary:"",
+    //     type:"",
+    //     match:false
+    // },
+    // {
+    //     title:"",
+    //     value:"",
+    //     secondary:"",
+    //     type:"",
+    //     match:false
+    // }
+];
+//车辆信息
+export const car_info=[
+    {
+        title:"车牌号",
+        value:"",
+        type:"license_no",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"车架号/vin码",
+        value:"",
+        type:"vin_code",
+        secondary:"",
+        match:true
+    },
+    {
+        title:"发动机号",
+        value:"",
+        type:"engine_number",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"车型",
+        value:"",
+        type:"type",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"车辆初登日期",
+        value:"",
+        type:"carFirstRegisterDate",
+        secondary:"",
+        match:false,
+        colSpan:7
+    },
+    {
+        title:"",
+        value:"",
+        secondary:"",
+        type:"",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        secondary:"",
+        type:"",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        secondary:"",
+        type:"",
+        match:false
+    }
+];
+//收款账户信息
+export const payee_info=[
+    {
+        title:"收款金额（元）",
+        value:"",
+        type:"money",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"账户名",
+        value:"",
+        type:"account_name",
+        secondary:"",
+        match:true
+    },
+    {
+        title:"开户总行",
+        value:"",
+        type:"bank_name",
+        secondary:"",
+        match:true
+    },
+    {
+        title:"开户银行全称",
+        value:"",
+        type:"bank_full_name",
+        secondary:"",
+        match:true
+    },
+    {
+        title:"银行账号",
+        value:"",
+        type:"bank_card_number",
+        secondary:"",
+        match:true
+    },
+    {
+        title:"收款人证件号",
+        value:"",
+        type:"id_number",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"开户行地址",
+        value:"",
+        type:"province",
+        secondary:"address",
+        match:false
+    },
+    {
+        title:"开户行所在市",
+        value:"",
+        type:"city",
+        secondary:"address",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        type:"district",
+        secondary:"address",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        type:"detail",
+        secondary:"address",
+        match:false
+    }
+];
+//还款账户信息
+export const repayee_info=[
+    {
+        title:"账户名",
+        value:"",
+        type:"account_name",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"开户总行",
+        value:"",
+        type:"bank_name",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"开户银行全称",
+        value:"",
+        type:"bank_full_name",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"银行账号",
+        value:"",
+        type:"bank_card_number",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"还款人证件号",
+        value:"",
+        type:"id_number",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"还款人手机号",
+        value:"",
+        type:"phone",
+        secondary:"",
+        match:false,
+        // colSpan:7
+    },
+    // {
+    //     title:"绑卡编号",
+    //     value:"",
+    //     type:"bind_code",
+    //     secondary:"",
+    //     match:false
+    // },
+    {
+        title:"",
+        value:"",
+        type:"",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        type:"",
+        secondary:"",
+        match:false
+    },
+    {
+        title:"",
+        value:"",
+        type:"",
+        secondary:"",
+        match:false
+    }
+];
+//借款公司信息
+export const company=[
+    {
+        title:"借款方",
+        secondary:"",
+        type:"name",
+        value:"",
+        match:false
+    },
+    {
+        title:"联系方式",
+        secondary:"",
+        type:"contact",
+        value:"",
+        match:false
+    },
+    {
+        title:"营业执照号",
+        secondary:"",
+        type:"business_license",
+        value:"",
+        match:false
+    },
+    {
+        title:"营业执照截止日期",
+        secondary:"",
+        type:"license_deadline",
+        value:"",
+        match:false
+    },
+    {
+        title:"通讯地址（省）",
+        secondary:"address",
+        type:"province",
+        value:"",
+        match:false
+    },
+    {
+        title:"通讯地址（市）",
+        secondary:"address",
+        type:"city",
+        value:"",
+        match:false
+    },
+    {
+        title:"通讯地址（区/县）",
+        secondary:"address",
+        type:"district",
+        value:"",
+        match:false
+    },
+    {
+        title:"通讯地址（详细）",
+        secondary:"address",
+        type:"detail",
+        value:"",
+        match:false
+    },
+    {
+        title:"法人名称",
+        secondary:"legal_person",
+        type:"name",
+        value:"",
+        match:false
+    },
+    {
+        title:"法人手机号",
+        secondary:"legal_person",
+        type:"phone",
+        value:"",
+        match:false
+    },
+    {
+        title:"法人身份证号",
+        secondary:"legal_person",
+        type:"id",
+        value:"",
+        match:false
+    },
+    {
+        title:"",
+        secondary:"",
+        type:"",
+        value:"",
+        match:false
+    }
+];

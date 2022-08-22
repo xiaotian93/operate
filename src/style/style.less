@@ -1,0 +1,181 @@
+@success:#00B471 ;
+@default:#ffffff ;
+@info:#1B84FF;
+
+/* 字体样式 */
+.f1{
+	font-size: 20px;
+	font-weight: bold;
+}
+.f2{
+	font-size: 16px;
+	font-weight: bold;
+}
+.f3{
+	font-size: 14px;
+}
+.f4{
+	font-size: 12px;
+}
+
+/* 表单元素 */
+input,button,select{
+	outline: none;
+}
+a,a:hover,a:active,a:visited{
+	color:#1B84FF;
+}
+.ipt-text{
+	background: #FFFFFF;
+	border: 1px solid #DADEE4;
+	border-radius: 4px;
+	width: 100%;
+	height: 40px;
+	padding: 0px 10px;
+	vertical-align: middle;
+	line-height: 40px;
+}
+.text-center{
+	text-align: center;
+}
+.text-right{
+	text-align: right;
+}
+.text-danger{
+	color: #f04134
+}
+.text-blue{
+	color: #1B84FF ;
+}
+.text-orange{
+	color:#000;
+	margin-bottom: 10px;
+	font-size: 14px;
+	.total-bold{
+		font-weight: 700!important
+	}
+}
+.text-success{
+	color: #00B471
+}
+.bg-warn{
+	background-color: #ffc8c4!important
+}
+.bg-warn:hover > td{
+	background-color: #ffc8c4!important
+};
+.faraway{
+	margin-top: 20px;
+}
+
+.filter .ant-calendar-picker{
+	width: 100%;
+}
+.filter .ant-input{
+	background: #FFFFFF;
+	border: 1px solid #DADEE4;
+	border-radius: 4px;
+	height: 30px;
+	line-height: 30px;
+	padding: 0px 3px 0px 10px;
+}
+.filter .ant-calendar-range-picker-separator{
+	line-height: inherit;
+}
+.filter .ant-select{
+	width:100%;
+}
+// .filter .ant-select-selection--multiple{
+// 	padding-bottom: 0px;
+// }
+.filter .ant-select-selection--single{
+	height: 30px;
+}
+.filter .ant-select-selection--single .ant-select-selection__rendered{
+	line-height: 30px;
+}
+
+.line-table {
+	width: 100%;
+	font-size: 14px;
+	border-collapse: collapse;
+}
+.line-table td{
+	line-height: 30px;
+	min-width: 120px;
+	vertical-align: top;
+}
+.line-table tr td:nth-child(odd){
+	text-align: right;
+	padding-right: 10px;
+	color: #505050;
+}
+.line-table tr td:nth-child(even){
+	padding-left: 10px;
+	color: #9a9a9a;
+}
+.line-table tr.grey{
+	background-color: #d4d4d4;
+}
+.selector{
+	width: 90%;
+	height: 40px;
+	background: #FFFFFF;
+	border: 1px solid #DADEE4;
+}
+.bmd{
+    position: relative;
+	.table-col{
+		font-size: 13px;
+		width: 100%;
+		border-collapse: collapse;
+		color:#393A3E;
+		td{
+			background-color: #fff;
+			text-align: left;
+			padding: 5px 10px;
+			border:1px solid #CED0DA;
+			width:150px;
+			word-break: break-all;
+		}
+		td.key{
+			background-color: #F4F4F4;
+			font-weight: bold!important;
+			width:100px;
+		}
+    }
+}
+.filter-form .ant-form-item .ant-calendar-picker{
+    width: 100%;
+}
+.viewer-container{
+    z-index: 1!important;
+}
+.ant-table-fixed-header > .ant-table-content > .ant-table-scroll > .ant-table-body{
+	overflow-x: scroll!important;
+}
+.sideMenu{
+	::-webkit-scrollbar  
+{  
+    width: 3px;  
+    height: 3px;  
+    background-color: #F5F5F5;  
+}
+/*定义滚动条轨道 内阴影+圆角*/  
+::-webkit-scrollbar-track  
+{  
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);  
+    border-radius: 10px;  
+	background-color: #FFF;  
+}
+/*定义滑块 内阴影+圆角*/  
+::-webkit-scrollbar-thumb  
+{  
+    border-radius: 10px;  
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,.3);  
+    background-color: #AAA;  
+}
+}
+
+@import url('./style/overall.less');
+@import url('./table.less');
